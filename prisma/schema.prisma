@@ -12,13 +12,16 @@ model User {
   matricula      String          @unique
   password       String
   createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now()) @updatedAt
   stockMovements StockMovement[]
 }
 
 model Category {
-  id       String    @id @default(uuid())
-  name     String    @unique
-  products Product[]
+  id        String    @id @default(uuid())
+  name      String    @unique
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
 }
 
 model Product {
@@ -29,6 +32,7 @@ model Product {
   categoryId     String
   category       Category        @relation(fields: [categoryId], references: [id])
   createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now()) @updatedAt
   stockMovements StockMovement[]
 }
 
@@ -48,4 +52,5 @@ model StockMovement {
   userId    String
   user      User         @relation(fields: [userId], references: [id])
   createdAt DateTime     @default(now())
+  updatedAt DateTime     @default(now()) @updatedAt
 }

@@ -17,7 +17,30 @@ export const stockOutSchema = z.object({
 export type StockInInput = z.infer<typeof stockInSchema>;
 export type StockOutInput = z.infer<typeof stockOutSchema>;
 
+export const updateMovementSchema = z.object({
+  reason: z.string().min(1, 'O motivo não pode ser vazio'),
+});
+
+export type UpdateMovementInput = z.infer<typeof updateMovementSchema>;
+
 export class StockService {
+  async updateMovementReason(id: string, data: UpdateMovementInput) {
+    const movement = await prisma.stockMovement.findUnique({
+      where: { id },
+    });
+
+    if (!movement) {
+      throw new Error('Movimentação não encontrada');
+    }
+
+    return prisma.stockMovement.update({
+      where: { id },
+      data: {
+        reason: data.reason,
+      },
+    });
+  }
+
   async stockIn(data: StockInInput, userId: string) {
     return prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({

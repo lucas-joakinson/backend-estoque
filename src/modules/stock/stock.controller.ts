@@ -1,11 +1,28 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { StockService, stockInSchema, stockOutSchema } from './stock.service';
+import { StockService, stockInSchema, stockOutSchema, updateMovementSchema } from './stock.service';
+import { z } from 'zod';
+
+const paramsSchema = z.object({
+  id: z.string().uuid(),
+});
 
 export class StockController {
   private stockService: StockService;
 
   constructor() {
     this.stockService = new StockService();
+  }
+
+  async updateMovementReason(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = paramsSchema.parse(request.params);
+    const data = updateMovementSchema.parse(request.body);
+
+    try {
+      const result = await this.stockService.updateMovementReason(id, data);
+      return reply.status(200).send(result);
+    } catch (error: any) {
+      return reply.status(404).send({ message: error.message });
+    }
   }
 
   async stockIn(request: FastifyRequest, reply: FastifyReply) {
