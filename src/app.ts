@@ -19,6 +19,11 @@ app.register(jwt, {
   secret: env.JWT_SECRET,
 });
 
+// Rota de Status / Health Check
+app.get('/', async () => {
+  return { status: 'Backend Gerenciador de Estoque Online 🚀' };
+});
+
 // Registro de Rotas
 app.register(authRoutes, { prefix: '/auth' });
 app.register(userRoutes, { prefix: '/users' });
