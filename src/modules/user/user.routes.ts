@@ -12,4 +12,8 @@ export async function userRoutes(app: FastifyInstance) {
   app.get('/', { preHandler: [auth, isAdmin] }, (request, reply) => 
     userController.listAll(request, reply)
   );
+
+  app.delete('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
+    userController.delete(request, reply)
+  );
 }

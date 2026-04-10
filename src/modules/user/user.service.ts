@@ -86,4 +86,22 @@ export class UserService {
       where: { matricula },
     });
   }
+
+  async delete(id: string) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new Error('Usuário não encontrado');
+    }
+
+    if (user.matricula === 'admin') {
+      throw new Error('Não é possível excluir o usuário administrador mestre.');
+    }
+
+    await prisma.user.delete({
+      where: { id },
+    });
+  }
 }
