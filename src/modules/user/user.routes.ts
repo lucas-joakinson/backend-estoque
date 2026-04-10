@@ -8,4 +8,8 @@ export async function userRoutes(app: FastifyInstance) {
   app.post('/', { preHandler: [auth, isAdmin] }, (request, reply) => 
     userController.create(request, reply)
   );
+
+  app.get('/', { preHandler: [auth, isAdmin] }, (request, reply) => 
+    userController.listAll(request, reply)
+  );
 }

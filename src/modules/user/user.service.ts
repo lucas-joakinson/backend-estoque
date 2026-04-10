@@ -9,7 +9,49 @@ export const createUserSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 
+export const userQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(50).default(10),
+  sortBy: z.enum(['matricula', 'createdAt', 'role']).default('matricula'),
+  order: z.enum(['asc', 'desc']).default('asc'),
+});
+
+export type UserQueryInput = z.infer<typeof userQuerySchema>;
+
 export class UserService {
+  async findAll(query: UserQueryInput) {
+    const { page, limit, sortBy, order } = query;
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        skip,
+        take: limit,
+        orderBy: {
+          [sortBy]: order,
+        },
+        select: {
+          id: true,
+          matricula: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.user.count(),
+    ]);
+
+    return {
+      users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   async create(data: CreateUserInput) {
     const userExists = await prisma.user.findUnique({
       where: { matricula: data.matricula },
