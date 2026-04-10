@@ -5,17 +5,19 @@ import { auth, isAdmin } from '../../shared/middleware/auth.middleware';
 export async function productRoutes(app: FastifyInstance) {
   const productController = new ProductController();
 
-  app.addHook('preHandler', auth);
+  app.get('/', { preHandler: [auth] }, (request, reply) => 
+    productController.listAll(request, reply)
+  );
 
-  app.post('/', (request, reply) => productController.create(request, reply));
-  app.get('/', (request, reply) => productController.list(request, reply));
-  app.get('/:id', (request, reply) => productController.getById(request, reply));
-  
-  app.put('/:id', { preHandler: [isAdmin] }, (request, reply) => 
+  app.post('/', { preHandler: [auth, isAdmin] }, (request, reply) => 
+    productController.create(request, reply)
+  );
+
+  app.patch('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
     productController.update(request, reply)
   );
-  
-  app.delete('/:id', { preHandler: [isAdmin] }, (request, reply) => 
+
+  app.delete('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
     productController.delete(request, reply)
   );
 }

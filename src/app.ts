@@ -5,7 +5,7 @@ import { env } from './config/env';
 import { authRoutes } from './modules/auth/auth.routes';
 import { productRoutes } from './modules/product/product.routes';
 import { categoryRoutes } from './modules/category/category.routes';
-import { stockRoutes } from './modules/stock/stock.routes';
+import { assetRoutes } from './modules/asset/asset.routes';
 import { userRoutes } from './modules/user/user.routes';
 import { ZodError } from 'zod';
 
@@ -21,7 +21,7 @@ app.register(jwt, {
 
 // Rota de Status / Health Check
 app.get('/', async () => {
-  return { status: 'Backend Gerenciador de Estoque Online 🚀' };
+  return { status: 'Backend Gerenciador de Ativos Online 🚀' };
 });
 
 // Registro de Rotas
@@ -29,7 +29,7 @@ app.register(authRoutes, { prefix: '/auth' });
 app.register(userRoutes, { prefix: '/users' });
 app.register(productRoutes, { prefix: '/products' });
 app.register(categoryRoutes, { prefix: '/categories' });
-app.register(stockRoutes, { prefix: '/stock' });
+app.register(assetRoutes, { prefix: '/assets' });
 
 // Handler de Erros Global
 app.setErrorHandler((error, _, reply) => {

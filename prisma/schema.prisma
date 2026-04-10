@@ -13,13 +13,13 @@ enum Role {
 }
 
 model User {
-  id             String          @id @default(uuid())
-  matricula      String          @unique
+  id             String         @id @default(uuid())
+  matricula      String         @unique
   password       String
-  role           Role            @default(OPERATOR)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @default(now()) @updatedAt
-  stockMovements StockMovement[]
+  role           Role           @default(OPERATOR)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
+  assetHistories AssetHistory[]
 }
 
 model Category {
@@ -31,32 +31,46 @@ model Category {
 }
 
 model Product {
-  id             String          @id @default(uuid())
-  name           String
-  sku            String          @unique
-  quantity       Int             @default(0)
-  categoryId     String
-  category       Category        @relation(fields: [categoryId], references: [id])
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @default(now()) @updatedAt
-  stockMovements StockMovement[]
+  id         String   @id @default(uuid())
+  name       String
+  brand      String?
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+  assets     Asset[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
 }
 
-enum MovementType {
-  IN
-  OUT
-  ADJUSTMENT
+enum AssetStatus {
+  DISPONIVEL
+  EM_USO
+  EM_MANUTENCAO
+  DEFEITO
+  DESCARTADO
 }
 
-model StockMovement {
-  id        String       @id @default(uuid())
-  type      MovementType
-  quantity  Int
-  reason    String?
-  productId String
-  product   Product      @relation(fields: [productId], references: [id])
-  userId    String
-  user      User         @relation(fields: [userId], references: [id])
-  createdAt DateTime     @default(now())
-  updatedAt DateTime     @default(now()) @updatedAt
+model Asset {
+  id          String         @id @default(uuid())
+  patrimonio  String         @unique
+  status      AssetStatus    @default(DISPONIVEL)
+  location    String
+  productId   String
+  product     Product        @relation(fields: [productId], references: [id])
+  history     AssetHistory[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @default(now()) @updatedAt
+}
+
+model AssetHistory {
+  id          String       @id @default(uuid())
+  assetId     String
+  asset       Asset        @relation(fields: [assetId], references: [id])
+  oldStatus   AssetStatus?
+  newStatus   AssetStatus
+  oldLocation String?
+  newLocation String?
+  observation String?      @db.VarChar(500)
+  userId      String
+  user        User         @relation(fields: [userId], references: [id])
+  createdAt   DateTime     @default(now())
 }
