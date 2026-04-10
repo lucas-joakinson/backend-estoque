@@ -27,7 +27,11 @@ export class StockController {
 
   async stockIn(request: FastifyRequest, reply: FastifyReply) {
     const data = stockInSchema.parse(request.body);
-    const userId = request.user.sub as string;
+    const userId = request.user?.id;
+
+    if (!userId) {
+      return reply.status(401).send({ error: "Usuário não autenticado." });
+    }
 
     try {
       const result = await this.stockService.stockIn(data, userId);
@@ -39,7 +43,11 @@ export class StockController {
 
   async stockOut(request: FastifyRequest, reply: FastifyReply) {
     const data = stockOutSchema.parse(request.body);
-    const userId = request.user.sub as string;
+    const userId = request.user?.id;
+
+    if (!userId) {
+      return reply.status(401).send({ error: "Usuário não autenticado." });
+    }
 
     try {
       const result = await this.stockService.stockOut(data, userId);

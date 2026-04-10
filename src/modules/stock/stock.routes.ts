@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { StockController } from './stock.controller';
-import { authMiddleware } from '../../shared/middleware/auth.middleware';
+import { auth } from '../../shared/middleware/auth.middleware';
 
 export async function stockRoutes(app: FastifyInstance) {
   const stockController = new StockController();
 
-  app.addHook('preHandler', authMiddleware);
+  app.addHook('preHandler', auth);
 
   app.post('/in', (request, reply) => stockController.stockIn(request, reply));
   app.post('/out', (request, reply) => stockController.stockOut(request, reply));

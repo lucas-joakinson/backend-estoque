@@ -26,8 +26,9 @@ export class AuthService {
     }
 
     return {
-      sub: user.id,
+      id: user.id,
       matricula: user.matricula,
+      role: user.role,
     };
   }
 }

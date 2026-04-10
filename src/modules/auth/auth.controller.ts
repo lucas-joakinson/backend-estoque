@@ -28,10 +28,14 @@ export class AuthController {
     try {
       const user = await this.authService.authenticate(data);
       const token = await reply.jwtSign(
-        { matricula: user.matricula },
-        { sign: { sub: user.sub } }
+        { 
+          id: user.id,
+          matricula: user.matricula,
+          role: user.role 
+        },
+        { sign: { expiresIn: '8h' } }
       );
-      return reply.status(200).send({ token });
+      return reply.status(200).send({ token, role: user.role });
     } catch (error: any) {
       return reply.status(401).send({ message: error.message });
     }

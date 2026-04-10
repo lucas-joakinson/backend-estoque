@@ -48,7 +48,7 @@ export class StockService {
       });
 
       if (!product) {
-        throw new Error('Produto não encontrado');
+        throw new Error(`Produto com id '${data.productId}' não encontrado.`);
       }
 
       const updatedProduct = await tx.product.update({
@@ -62,11 +62,11 @@ export class StockService {
 
       const movement = await tx.stockMovement.create({
         data: {
-          productId: data.productId,
-          userId,
           quantity: data.quantity,
           type: MovementType.IN,
           reason: data.reason,
+          product: { connect: { id: data.productId } },
+          user: { connect: { id: userId } },
         },
       });
 
@@ -81,11 +81,13 @@ export class StockService {
       });
 
       if (!product) {
-        throw new Error('Produto não encontrado');
+        throw new Error(`Produto com id '${data.productId}' não encontrado.`);
       }
 
       if (product.quantity < data.quantity) {
-        throw new Error('Estoque insuficiente');
+        throw new Error(
+          `Estoque insuficiente. Disponível: ${product.quantity}, solicitado: ${data.quantity}.`
+        );
       }
 
       const updatedProduct = await tx.product.update({
@@ -99,11 +101,11 @@ export class StockService {
 
       const movement = await tx.stockMovement.create({
         data: {
-          productId: data.productId,
-          userId,
           quantity: data.quantity,
           type: MovementType.OUT,
           reason: data.reason,
+          product: { connect: { id: data.productId } },
+          user: { connect: { id: userId } },
         },
       });
 

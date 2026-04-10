@@ -7,10 +7,16 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum Role {
+  ADMIN
+  OPERATOR
+}
+
 model User {
   id             String          @id @default(uuid())
   matricula      String          @unique
   password       String
+  role           Role            @default(OPERATOR)
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @default(now()) @updatedAt
   stockMovements StockMovement[]
