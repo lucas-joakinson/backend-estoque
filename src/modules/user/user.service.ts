@@ -1,10 +1,12 @@
 import { prisma } from '../../shared/db/prisma';
 import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import { Role } from '@prisma/client';
 
 export const createUserSchema = z.object({
-  matricula: z.string().min(1, 'Matrícula é obrigatória'),
+  matricula: z.string().min(6, 'Matrícula deve ter no mínimo 6 caracteres'),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
+  role: z.nativeEnum(Role).optional().default(Role.OPERATOR),
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -67,12 +69,14 @@ export class UserService {
       data: {
         matricula: data.matricula,
         password: hashedPassword,
+        role: data.role,
       },
     });
 
     return {
       id: user.id,
       matricula: user.matricula,
+      role: user.role,
       createdAt: user.createdAt,
     };
   }
