@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { UserService, createUserSchema, userQuerySchema } from './user.service';
+import { UserService, createUserSchema, userQuerySchema, updateUserSchema } from './user.service';
 import { z } from 'zod';
 
 const paramsSchema = z.object({
@@ -11,6 +11,23 @@ export class UserController {
 
   constructor() {
     this.userService = new UserService();
+  }
+
+  async update(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = paramsSchema.parse(request.params);
+    const data = updateUserSchema.parse(request.body);
+    const loggedUserId = request.user?.id;
+
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
+    try {
+      const user = await this.userService.update(id, data, loggedUserId);
+      return reply.status(200).send(user);
+    } catch (error: any) {
+      return reply.status(400).send({ message: error.message });
+    }
   }
 
   async delete(request: FastifyRequest, reply: FastifyReply) {

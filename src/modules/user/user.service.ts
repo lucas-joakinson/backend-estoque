@@ -9,7 +9,13 @@ export const createUserSchema = z.object({
   role: z.nativeEnum(Role).optional().default(Role.OPERATOR),
 });
 
+export const updateUserSchema = z.object({
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional(),
+  role: z.nativeEnum(Role).optional(),
+});
+
 export type CreateUserInput = z.infer<typeof createUserSchema>;
+export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 
 export const userQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -79,6 +85,48 @@ export class UserService {
       role: user.role,
       createdAt: user.createdAt,
     };
+  }
+
+  async update(id: string, data: UpdateUserInput, loggedUserId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id },
+    });
+
+    if (!user) {
+      throw new Error('Usuário não encontrado');
+    }
+
+    if (user.matricula === 'admin' && data.role && data.role !== user.role) {
+      throw new Error('Não é possível alterar o cargo do usuário administrador mestre.');
+    }
+
+    if (id === loggedUserId && data.role && data.role !== user.role) {
+      throw new Error('Você não pode alterar seu próprio cargo para evitar perda de acesso administrativo.');
+    }
+
+    const updateData: any = {};
+
+    if (data.password) {
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
+
+    if (data.role) {
+      updateData.role = data.role;
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: updateData,
+      select: {
+        id: true,
+        matricula: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+
+    return updatedUser;
   }
 
   async findByMatricula(matricula: string) {

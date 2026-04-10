@@ -13,6 +13,10 @@ export async function userRoutes(app: FastifyInstance) {
     userController.listAll(request, reply)
   );
 
+  app.patch('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
+    userController.update(request, reply)
+  );
+
   app.delete('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
     userController.delete(request, reply)
   );
