@@ -7,6 +7,8 @@ export const createProductSchema = z.object({
   categoryId: z.string().uuid('ID de categoria inválido'),
 });
 
+export const updateProductSchema = createProductSchema.partial();
+
 export const productQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(10),

@@ -23,6 +23,17 @@ export class AssetController {
     return reply.status(200).send(result);
   }
 
+  async getHistory(request: FastifyRequest, reply: FastifyReply) {
+    const { id } = paramsSchema.parse(request.params);
+
+    try {
+      const history = await this.assetService.getAssetHistory(id);
+      return reply.status(200).send(history);
+    } catch (error: any) {
+      return reply.status(404).send({ message: error.message });
+    }
+  }
+
   async getByPatrimonio(request: FastifyRequest, reply: FastifyReply) {
     const { patrimonio } = patrimonioParamsSchema.parse(request.params);
 
@@ -61,7 +72,7 @@ export class AssetController {
     }
 
     try {
-      const asset = await this.assetService.update(id, data, userId);
+      const asset = await this.assetService.updateAsset(id, data, userId);
       return reply.status(200).send(asset);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });

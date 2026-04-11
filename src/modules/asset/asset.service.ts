@@ -125,7 +125,31 @@ export class AssetService {
     });
   }
 
-  async update(id: string, data: UpdateAssetInput, userId: string) {
+  async getAssetHistory(assetId: string) {
+    const asset = await prisma.asset.findUnique({
+      where: { id: assetId },
+    });
+
+    if (!asset) {
+      throw new Error('Ativo não encontrado');
+    }
+
+    return prisma.assetHistory.findMany({
+      where: { assetId },
+      include: {
+        user: {
+          select: {
+            matricula: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+  }
+
+  async updateAsset(id: string, data: UpdateAssetInput, userId: string) {
     const asset = await prisma.asset.findUnique({
       where: { id },
     });

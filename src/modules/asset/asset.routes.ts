@@ -9,6 +9,14 @@ export async function assetRoutes(app: FastifyInstance) {
     assetController.listAll(request, reply)
   );
 
+  app.get('/:id/history', { preHandler: [auth] }, (request, reply) => 
+    assetController.getHistory(request, reply)
+  );
+
+  app.get('/history/:id', { preHandler: [auth] }, (request, reply) => 
+    assetController.getHistory(request, reply)
+  );
+
   app.get('/:patrimonio', { preHandler: [auth] }, (request, reply) => 
     assetController.getByPatrimonio(request, reply)
   );
