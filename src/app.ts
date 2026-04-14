@@ -1,6 +1,9 @@
 import fastify from 'fastify';
 import jwt from '@fastify/jwt';
 import cors from '@fastify/cors';
+import multipart from '@fastify/multipart';
+import staticPlugin from '@fastify/static';
+import path from 'path';
 import { env } from './config/env';
 import { authRoutes } from './modules/auth/auth.routes';
 import { productRoutes } from './modules/product/product.routes';
@@ -17,6 +20,17 @@ app.register(cors, {
 
 app.register(jwt, {
   secret: env.JWT_SECRET,
+});
+
+app.register(multipart, {
+  limits: {
+    fileSize: 2 * 1024 * 1024, // 2MB
+  },
+});
+
+app.register(staticPlugin, {
+  root: path.join(__dirname, '..', 'uploads'),
+  prefix: '/uploads/',
 });
 
 // Rota de Status / Health Check

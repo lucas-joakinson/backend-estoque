@@ -1,6 +1,12 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { UserService, createUserSchema, userQuerySchema, updateUserSchema } from './user.service';
+import { UserService, createUserSchema, userQuerySchema, updateUserSchema, changePasswordSchema, updateProfileSchema } from './user.service';
 import { z } from 'zod';
+import path from 'path';
+import fs from 'fs';
+import { pipeline } from 'stream';
+import { promisify } from 'util';
+
+const pump = promisify(pipeline);
 
 const paramsSchema = z.object({
   id: z.string().uuid('ID de usuário inválido'),
@@ -11,6 +17,90 @@ export class UserController {
 
   constructor() {
     this.userService = new UserService();
+  }
+
+  async uploadAvatar(request: FastifyRequest, reply: FastifyReply) {
+    const loggedUserId = request.user?.id;
+
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
+    const data = await request.file();
+    
+    if (!data) {
+      return reply.status(400).send({ message: 'Nenhum arquivo enviado' });
+    }
+
+    const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedMimeTypes.includes(data.mimetype)) {
+      return reply.status(400).send({ message: 'Tipo de arquivo inválido. Use JPG, PNG ou WebP.' });
+    }
+
+    const uploadDir = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars');
+    
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    const extension = path.extname(data.filename);
+    const fileName = `${loggedUserId}-${Date.now()}${extension}`;
+    const filePath = path.join(uploadDir, fileName);
+
+    try {
+      await pump(data.file, fs.createWriteStream(filePath));
+      
+      const avatarUrl = `/uploads/avatars/${fileName}`;
+      const user = await this.userService.updateProfile(loggedUserId, { avatarUrl });
+
+      return reply.status(200).send(user);
+    } catch (error: any) {
+      return reply.status(500).send({ message: 'Erro ao salvar o arquivo: ' + error.message });
+    }
+  }
+
+  async changePassword(request: FastifyRequest, reply: FastifyReply) {
+    const loggedUserId = request.user?.id;
+
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
+    try {
+      const data = changePasswordSchema.parse(request.body);
+      await this.userService.changePassword(loggedUserId, data);
+      return reply.status(200).send({ message: 'Senha alterada com sucesso' });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ 
+          message: 'Erro de validação', 
+          errors: error.errors.map(err => ({ field: err.path[0], message: err.message })) 
+        });
+      }
+      return reply.status(400).send({ message: error.message });
+    }
+  }
+
+  async updateProfile(request: FastifyRequest, reply: FastifyReply) {
+    const loggedUserId = request.user?.id;
+
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
+    try {
+      const data = updateProfileSchema.parse(request.body);
+      const user = await this.userService.updateProfile(loggedUserId, data);
+      return reply.status(200).send(user);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ 
+          message: 'Erro de validação', 
+          errors: error.errors.map(err => ({ field: err.path[0], message: err.message })) 
+        });
+      }
+      return reply.status(400).send({ message: error.message });
+    }
   }
 
   async update(request: FastifyRequest, reply: FastifyReply) {
