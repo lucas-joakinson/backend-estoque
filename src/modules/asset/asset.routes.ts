@@ -21,6 +21,10 @@ export async function assetRoutes(app: FastifyInstance) {
     assetController.getByPatrimonio(request, reply)
   );
 
+  app.post('/bulk', { preHandler: [auth] }, (request, reply) => 
+    assetController.createBulk(request, reply)
+  );
+
   app.post('/', { preHandler: [auth] }, (request, reply) => 
     assetController.create(request, reply)
   );

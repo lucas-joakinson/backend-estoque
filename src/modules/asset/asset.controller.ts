@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { AssetService, createAssetSchema, updateAssetSchema, assetQuerySchema } from './asset.service';
+import { AssetService, createAssetSchema, updateAssetSchema, assetQuerySchema, createBulkAssetSchema } from './asset.service';
 import { z } from 'zod';
 
 const paramsSchema = z.object({
@@ -57,6 +57,22 @@ export class AssetController {
     try {
       const asset = await this.assetService.create(data, userId);
       return reply.status(201).send(asset);
+    } catch (error: any) {
+      return reply.status(400).send({ message: error.message });
+    }
+  }
+
+  async createBulk(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+
+    if (!userId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
+    try {
+      const data = createBulkAssetSchema.parse(request.body);
+      const result = await this.assetService.createBulk(data, userId);
+      return reply.status(201).send(result);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });
     }

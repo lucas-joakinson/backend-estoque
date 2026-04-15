@@ -10,6 +10,8 @@ export const createAssetSchema = z.object({
   status: z.nativeEnum(AssetStatus).optional().default(AssetStatus.DISPONIVEL),
 });
 
+export const createBulkAssetSchema = z.array(createAssetSchema).min(1, 'O lote deve conter pelo menos um ativo');
+
 export const updateAssetSchema = z.object({
   status: z.nativeEnum(AssetStatus).optional(),
   location: z.string().optional(),
@@ -26,6 +28,7 @@ export const assetQuerySchema = z.object({
 });
 
 export type CreateAssetInput = z.infer<typeof createAssetSchema>;
+export type CreateBulkAssetInput = z.infer<typeof createBulkAssetSchema>;
 export type UpdateAssetInput = z.infer<typeof updateAssetSchema>;
 export type AssetQueryInput = z.infer<typeof assetQuerySchema>;
 
@@ -107,7 +110,7 @@ export class AssetService {
     return prisma.$transaction(async (tx) => {
       const asset = await tx.asset.create({
         data: {
-          patrimonio: data.patrimonio,
+          patrimonio: patrimonioPadded,
           location: data.location,
           responsible: data.responsible,
           productId: data.productId,
@@ -126,6 +129,65 @@ export class AssetService {
       });
 
       return asset;
+    });
+  }
+
+  async createBulk(data: CreateBulkAssetInput, userId: string) {
+    const patrimonios = data.map(asset => asset.patrimonio.padStart(6, '0'));
+    const uniquePatrimoniosInBatch = new Set(patrimonios);
+
+    if (uniquePatrimoniosInBatch.size !== patrimonios.length) {
+      throw new Error('O lote contém números de patrimônio duplicados');
+    }
+
+    const existingAssets = await prisma.asset.findMany({
+      where: { patrimonio: { in: patrimonios } },
+      select: { patrimonio: true }
+    });
+
+    if (existingAssets.length > 0) {
+      const dups = existingAssets.map(a => a.patrimonio).join(', ');
+      throw new Error(`Os seguintes patrimônios já existem no sistema: ${dups}`);
+    }
+
+    const productIds = [...new Set(data.map(asset => asset.productId))];
+    const existingProducts = await prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: { id: true }
+    });
+
+    if (existingProducts.length !== productIds.length) {
+      throw new Error('Um ou mais produtos (modelos) informados não existem');
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const createdAssets = await Promise.all(data.map(async (assetData) => {
+        const patrimonioPadded = assetData.patrimonio.padStart(6, '0');
+        
+        const asset = await tx.asset.create({
+          data: {
+            patrimonio: patrimonioPadded,
+            location: assetData.location,
+            responsible: assetData.responsible,
+            productId: assetData.productId,
+            status: assetData.status,
+          },
+        });
+
+        await tx.assetHistory.create({
+          data: {
+            assetId: asset.id,
+            newStatus: asset.status,
+            newLocation: asset.location,
+            observation: 'Criação inicial do ativo (Lote)',
+            userId,
+          },
+        });
+
+        return asset;
+      }));
+
+      return { count: createdAssets.length };
     });
   }
 
