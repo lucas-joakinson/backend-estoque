@@ -13,6 +13,10 @@ export async function userRoutes(app: FastifyInstance) {
     userController.changePassword(request, reply)
   );
 
+  app.get('/profile', { preHandler: [auth] }, (request, reply) => 
+    userController.getProfile(request, reply)
+  );
+
   app.patch('/profile', { preHandler: [auth] }, (request, reply) => 
     userController.updateProfile(request, reply)
   );

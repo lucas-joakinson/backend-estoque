@@ -19,6 +19,21 @@ export class UserController {
     this.userService = new UserService();
   }
 
+  async getProfile(request: FastifyRequest, reply: FastifyReply) {
+    const loggedUserId = request.user?.id;
+
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
+    try {
+      const user = await this.userService.getProfile(loggedUserId);
+      return reply.status(200).send(user);
+    } catch (error: any) {
+      return reply.status(404).send({ message: error.message });
+    }
+  }
+
   async uploadAvatar(request: FastifyRequest, reply: FastifyReply) {
     const loggedUserId = request.user?.id;
 

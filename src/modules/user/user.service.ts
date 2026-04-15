@@ -7,13 +7,13 @@ export const createUserSchema = z.object({
   matricula: z.string().min(6, 'Matrícula deve ter no mínimo 6 caracteres'),
   name: z.string().min(3, 'O nome deve ter no mínimo 3 caracteres'),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
-  role: z.nativeEnum(Role).optional().default(Role.OPERATOR),
+  role: z.string().optional().default('OPERATOR'),
 });
 
 export const updateUserSchema = z.object({
   name: z.string().min(3, 'O nome deve ter no mínimo 3 caracteres').optional(),
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres').optional(),
-  role: z.nativeEnum(Role).optional(),
+  role: z.string().optional(),
 });
 
 export const updateProfileSchema = z.object({
@@ -53,24 +53,24 @@ export class UserService {
       prisma.user.findMany({
         skip,
         take: limit,
-        orderBy: {
-          [sortBy]: order,
-        },
-        select: {
-          id: true,
-          matricula: true,
-          name: true,
+        orderBy: sortBy === 'role' ? { role: { name: order } } : { [sortBy]: order },
+        include: {
           role: true,
-          avatarUrl: true,
-          createdAt: true,
-          updatedAt: true,
         },
       }),
       prisma.user.count(),
     ]);
 
     return {
-      users,
+      users: users.map(user => ({
+        id: user.id,
+        matricula: user.matricula,
+        name: user.name,
+        role: user.role.name,
+        avatarUrl: user.avatarUrl,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+      })),
       pagination: {
         page,
         limit,
@@ -89,6 +89,14 @@ export class UserService {
       throw new Error('Usuário já cadastrado com esta matrícula');
     }
 
+    const role = await prisma.role.findUnique({
+      where: { name: data.role.toUpperCase() },
+    });
+
+    if (!role) {
+      throw new Error('Cargo especificado não existe');
+    }
+
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
     const user = await prisma.user.create({
@@ -96,15 +104,18 @@ export class UserService {
         matricula: data.matricula,
         name: data.name,
         password: hashedPassword,
-        role: data.role,
+        roleId: role.id,
       },
+      include: {
+        role: true,
+      }
     });
 
     return {
       id: user.id,
       matricula: user.matricula,
       name: user.name,
-      role: user.role,
+      role: user.role.name,
       createdAt: user.createdAt,
     };
   }
@@ -112,49 +123,82 @@ export class UserService {
   async update(id: string, data: UpdateUserInput, loggedUserId: string) {
     const user = await prisma.user.findUnique({
       where: { id },
+      include: { role: true },
     });
 
     if (!user) {
       throw new Error('Usuário não encontrado');
     }
 
-    if (user.matricula === 'admin' && data.role && data.role !== user.role) {
-      throw new Error('Não é possível alterar o cargo do usuário administrador mestre.');
-    }
-
-    if (id === loggedUserId && data.role && data.role !== user.role) {
-      throw new Error('Você não pode alterar seu próprio cargo para evitar perda de acesso administrativo.');
-    }
-
     const updateData: any = {};
 
-    if (data.name) {
-      updateData.name = data.name;
-    }
-
-    if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 10);
-    }
-
+    if (data.name) updateData.name = data.name;
+    if (data.password) updateData.password = await bcrypt.hash(data.password, 10);
+    
     if (data.role) {
-      updateData.role = data.role;
+      const newRole = await prisma.role.findUnique({
+        where: { name: data.role.toUpperCase() },
+      });
+
+      if (!newRole) {
+        throw new Error('Cargo especificado não existe');
+      }
+
+      if (user.matricula === 'admin' && newRole.name !== 'ADMIN') {
+        throw new Error('Não é possível alterar o cargo do usuário administrador mestre.');
+      }
+
+      if (id === loggedUserId && newRole.name !== user.role.name) {
+        throw new Error('Você não pode alterar seu próprio cargo para evitar perda de acesso administrativo.');
+      }
+
+      updateData.roleId = newRole.id;
     }
 
     const updatedUser = await prisma.user.update({
       where: { id },
       data: updateData,
-      select: {
-        id: true,
-        matricula: true,
-        name: true,
+      include: {
         role: true,
-        avatarUrl: true,
-        createdAt: true,
-        updatedAt: true,
       },
     });
 
-    return updatedUser;
+    return {
+      id: updatedUser.id,
+      matricula: updatedUser.matricula,
+      name: updatedUser.name,
+      role: updatedUser.role.name,
+      avatarUrl: updatedUser.avatarUrl,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
+    };
+  }
+
+  async getProfile(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error('Usuário não encontrado');
+    }
+
+    return {
+      id: user.id,
+      matricula: user.matricula,
+      name: user.name,
+      role: user.role.name,
+      avatarUrl: user.avatarUrl,
+      permissions: user.role.permissions,
+      updatedAt: user.updatedAt,
+    };
   }
 
   async updateProfile(userId: string, data: UpdateProfileInput) {
@@ -170,18 +214,27 @@ export class UserService {
     if (data.name) updateData.name = data.name;
     if (data.avatarUrl !== undefined) updateData.avatarUrl = data.avatarUrl;
 
-    return prisma.user.update({
+    const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData,
-      select: {
-        id: true,
-        matricula: true,
-        name: true,
-        role: true,
-        avatarUrl: true,
-        updatedAt: true,
+      include: {
+        role: {
+          include: {
+            permissions: true,
+          },
+        },
       },
     });
+
+    return {
+      id: updatedUser.id,
+      matricula: updatedUser.matricula,
+      name: updatedUser.name,
+      role: updatedUser.role.name,
+      avatarUrl: updatedUser.avatarUrl,
+      permissions: updatedUser.role.permissions,
+      updatedAt: updatedUser.updatedAt,
+    };
   }
 
   async changePassword(userId: string, data: ChangePasswordInput) {

@@ -10,6 +10,7 @@ import { productRoutes } from './modules/product/product.routes';
 import { categoryRoutes } from './modules/category/category.routes';
 import { assetRoutes } from './modules/asset/asset.routes';
 import { userRoutes } from './modules/user/user.routes';
+import { permissionRoutes } from './modules/permission/permission.routes';
 import { ZodError } from 'zod';
 
 export const app = fastify();
@@ -41,6 +42,7 @@ app.get('/', async () => {
 // Registro de Rotas
 app.register(authRoutes, { prefix: '/auth' });
 app.register(userRoutes, { prefix: '/users' });
+app.register(permissionRoutes, { prefix: '/permissions' });
 app.register(productRoutes, { prefix: '/products' });
 app.register(categoryRoutes, { prefix: '/categories' });
 app.register(assetRoutes, { prefix: '/assets' });

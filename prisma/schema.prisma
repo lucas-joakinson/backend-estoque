@@ -7,9 +7,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  OPERATOR
+model Role {
+  id          String          @id @default(uuid())
+  name        String          @unique
+  users       User[]
+  permissions RolePermission?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @default(now()) @updatedAt
+}
+
+model RolePermission {
+  id                 String   @id @default(uuid())
+  roleId             String   @unique
+  role               Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  canManageUsers     Boolean  @default(false)
+  canManageProducts  Boolean  @default(false)
+  canManageCategories Boolean  @default(false)
+  canManageAssets    Boolean  @default(false)
+  canDeleteItems     Boolean  @default(false)
+  canViewReports     Boolean  @default(false)
+  updatedAt          DateTime @default(now()) @updatedAt
 }
 
 model User {
@@ -18,7 +35,8 @@ model User {
   name           String
   password       String
   avatarUrl      String?
-  role           Role           @default(OPERATOR)
+  roleId         String
+  role           Role           @relation(fields: [roleId], references: [id])
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @default(now()) @updatedAt
   assetHistories AssetHistory[]

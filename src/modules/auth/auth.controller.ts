@@ -35,7 +35,16 @@ export class AuthController {
         },
         { sign: { expiresIn: '8h' } }
       );
-      return reply.status(200).send({ token, role: user.role });
+      return reply.status(200).send({ 
+        token, 
+        user: {
+          id: user.id,
+          matricula: user.matricula,
+          name: user.name,
+          role: user.role,
+          permissions: user.permissions
+        }
+      });
     } catch (error: any) {
       return reply.status(401).send({ message: error.message });
     }

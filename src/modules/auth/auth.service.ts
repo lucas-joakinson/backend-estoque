@@ -13,6 +13,13 @@ export class AuthService {
   async authenticate(data: LoginInput) {
     const user = await prisma.user.findUnique({
       where: { matricula: data.matricula },
+      include: {
+        role: {
+          include: {
+            permissions: true
+          }
+        }
+      }
     });
 
     if (!user) {
@@ -29,7 +36,8 @@ export class AuthService {
       id: user.id,
       matricula: user.matricula,
       name: user.name,
-      role: user.role,
+      role: user.role.name,
+      permissions: user.role.permissions,
     };
   }
 }
