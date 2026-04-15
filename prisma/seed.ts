@@ -10,9 +10,11 @@ async function main() {
     where: { matricula: 'admin' },
     update: {
       role: 'ADMIN',
+      name: 'Administrador',
     },
     create: {
       matricula: 'admin',
+      name: 'Administrador',
       password: adminPassword,
       role: 'ADMIN',
     },

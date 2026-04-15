@@ -5,6 +5,7 @@ import { AssetStatus } from '@prisma/client';
 export const createAssetSchema = z.object({
   patrimonio: z.string().regex(/^\d{1,6}$/, 'Patrimônio deve ser apenas numeral com no máximo 6 caracteres'),
   location: z.string().min(1, 'Localização é obrigatória'),
+  responsible: z.string().optional(),
   productId: z.string().uuid('ID de produto inválido'),
   status: z.nativeEnum(AssetStatus).optional().default(AssetStatus.DISPONIVEL),
 });
@@ -12,6 +13,7 @@ export const createAssetSchema = z.object({
 export const updateAssetSchema = z.object({
   status: z.nativeEnum(AssetStatus).optional(),
   location: z.string().optional(),
+  responsible: z.string().optional(),
   observation: z.string().max(500, 'Observação deve ter no máximo 500 caracteres').optional(),
 });
 
@@ -36,6 +38,7 @@ export class AssetService {
       OR: [
         { patrimonio: { contains: search, mode: 'insensitive' as const } },
         { location: { contains: search, mode: 'insensitive' as const } },
+        { responsible: { contains: search, mode: 'insensitive' as const } },
         { product: { name: { contains: search, mode: 'insensitive' as const } } },
         { product: { brand: { contains: search, mode: 'insensitive' as const } } },
       ],
@@ -106,6 +109,7 @@ export class AssetService {
         data: {
           patrimonio: data.patrimonio,
           location: data.location,
+          responsible: data.responsible,
           productId: data.productId,
           status: data.status,
         },
@@ -160,8 +164,9 @@ export class AssetService {
 
     const hasStatusChange = data.status && data.status !== asset.status;
     const hasLocationChange = data.location && data.location !== asset.location;
+    const hasResponsibleChange = data.responsible !== undefined && data.responsible !== asset.responsible;
 
-    if (!hasStatusChange && !hasLocationChange) {
+    if (!hasStatusChange && !hasLocationChange && !hasResponsibleChange) {
       return asset;
     }
 
@@ -171,6 +176,7 @@ export class AssetService {
         data: {
           status: data.status,
           location: data.location,
+          responsible: data.responsible,
         },
       });
 
