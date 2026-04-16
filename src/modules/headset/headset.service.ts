@@ -22,6 +22,7 @@ export const headsetQuerySchema = z.object({
 });
 
 export type HeadsetInput = z.infer<typeof headsetSchema>;
+export type HeadsetUpdateInput = Partial<HeadsetInput>;
 export type HeadsetQueryInput = z.infer<typeof headsetQuerySchema>;
 
 export class HeadsetService {
@@ -154,7 +155,7 @@ export class HeadsetService {
     });
   }
 
-  async update(id: number, data: HeadsetInput, userId: string) {
+  async update(id: number, data: HeadsetUpdateInput, userId: string) {
     const headset = await prisma.headset.findUnique({
       where: { id },
     });
@@ -163,9 +164,12 @@ export class HeadsetService {
       throw new Error('Headset não encontrado');
     }
 
-    await this.validateUniqueness(data.lacre, data.numeroSerie, id);
+    if (data.lacre || data.numeroSerie) {
+      await this.validateUniqueness(data.lacre, data.numeroSerie, id);
+    }
 
-    const hasStatusChange = data.status !== headset.status;
+    const hasStatusChange = data.status !== undefined && data.status !== headset.status;
+    const hasObservationChange = data.observacoes !== undefined && data.observacoes !== headset.observacoes;
 
     return prisma.$transaction(async (tx) => {
       const updatedHeadset = await tx.headset.update({
@@ -173,13 +177,13 @@ export class HeadsetService {
         data,
       });
 
-      if (hasStatusChange) {
+      if (hasStatusChange || hasObservationChange) {
         await tx.headsetHistory.create({
           data: {
             headsetId: id,
             oldStatus: headset.status,
             newStatus: updatedHeadset.status,
-            observation: 'Atualização de dados',
+            observation: data.observacoes || 'Atualização de dados',
             userId,
           },
         });

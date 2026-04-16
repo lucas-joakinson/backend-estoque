@@ -96,7 +96,7 @@ export class HeadsetController {
 
     try {
       const { id } = paramsSchema.parse(request.params);
-      const data = headsetSchema.parse(request.body);
+      const data = headsetSchema.partial().parse(request.body);
       const headset = await this.headsetService.update(id, data, userId);
       return reply.status(200).send(headset);
     } catch (error: any) {
