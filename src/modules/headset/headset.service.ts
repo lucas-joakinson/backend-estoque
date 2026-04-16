@@ -1,0 +1,231 @@
+import { prisma } from '../../shared/db/prisma';
+import { z } from 'zod';
+
+export const headsetSchema = z.object({
+  matricula: z.string().min(1, 'Matrícula é obrigatória'),
+  lacre: z.string().max(5, 'Lacre deve ter no máximo 5 caracteres').optional().nullable(),
+  marca: z.string().min(1, 'Marca é obrigatória'),
+  numeroSerie: z.string().optional().nullable(),
+  status: z.enum(['EM USO', 'RESERVA', 'TROCA PENDENTE', 'DESLIGADO'], {
+    errorMap: () => ({ message: 'Status inválido' }),
+  }),
+  observacoes: z.string().optional().nullable(),
+});
+
+export const bulkHeadsetSchema = z.array(headsetSchema).min(1, 'O lote deve conter pelo menos um headset');
+
+export const headsetQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  search: z.string().optional(),
+  status: z.string().optional(),
+});
+
+export type HeadsetInput = z.infer<typeof headsetSchema>;
+export type HeadsetQueryInput = z.infer<typeof headsetQuerySchema>;
+
+export class HeadsetService {
+  async findAll(query: HeadsetQueryInput) {
+    const { page, limit, search, status } = query;
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+
+    if (status) {
+      where.status = status;
+    }
+
+    if (search) {
+      where.OR = [
+        { matricula: { contains: search, mode: 'insensitive' } },
+        { lacre: { contains: search, mode: 'insensitive' } },
+        { marca: { contains: search, mode: 'insensitive' } },
+        { numeroSerie: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [headsets, total] = await Promise.all([
+      prisma.headset.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.headset.count({ where }),
+    ]);
+
+    return {
+      headsets,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async findById(id: number) {
+    const headset = await prisma.headset.findUnique({
+      where: { id },
+      include: {
+        history: {
+          include: { user: { select: { name: true, matricula: true } } },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+
+    if (!headset) {
+      throw new Error('Headset não encontrado');
+    }
+
+    return headset;
+  }
+
+  async create(data: HeadsetInput, userId: string) {
+    await this.validateUniqueness(data.lacre, data.numeroSerie);
+
+    return prisma.$transaction(async (tx) => {
+      const headset = await tx.headset.create({
+        data,
+      });
+
+      await tx.headsetHistory.create({
+        data: {
+          headsetId: headset.id,
+          newStatus: headset.status,
+          observation: 'Criação inicial',
+          userId,
+        },
+      });
+
+      return headset;
+    });
+  }
+
+  async createBulk(data: HeadsetInput[], userId: string) {
+    // Validação de duplicidade no lote
+    const lacres = data.map(h => h.lacre).filter(Boolean) as string[];
+    if (new Set(lacres).size !== lacres.length) {
+      throw new Error('O lote contém lacres duplicados');
+    }
+
+    const series = data.map(h => h.numeroSerie).filter(Boolean) as string[];
+    if (new Set(series).size !== series.length) {
+      throw new Error('O lote contém números de série duplicados');
+    }
+
+    // Validação de duplicidade no banco
+    const existingLacre = await prisma.headset.findFirst({
+      where: { lacre: { in: lacres } },
+    });
+    if (existingLacre) throw new Error(`Lacre ${existingLacre.lacre} já existe no sistema`);
+
+    const existingSerie = await prisma.headset.findFirst({
+      where: { numeroSerie: { in: series } },
+    });
+    if (existingSerie) throw new Error(`Série ${existingSerie.numeroSerie} já existe no sistema`);
+
+    return prisma.$transaction(async (tx) => {
+      const results = await Promise.all(data.map(async (h) => {
+        const headset = await tx.headset.create({ data: h });
+        await tx.headsetHistory.create({
+          data: {
+            headsetId: headset.id,
+            newStatus: headset.status,
+            observation: 'Criação inicial (Lote)',
+            userId,
+          },
+        });
+        return headset;
+      }));
+
+      return { count: results.length };
+    });
+  }
+
+  async update(id: number, data: HeadsetInput, userId: string) {
+    const headset = await prisma.headset.findUnique({
+      where: { id },
+    });
+
+    if (!headset) {
+      throw new Error('Headset não encontrado');
+    }
+
+    await this.validateUniqueness(data.lacre, data.numeroSerie, id);
+
+    const hasStatusChange = data.status !== headset.status;
+
+    return prisma.$transaction(async (tx) => {
+      const updatedHeadset = await tx.headset.update({
+        where: { id },
+        data,
+      });
+
+      if (hasStatusChange) {
+        await tx.headsetHistory.create({
+          data: {
+            headsetId: id,
+            oldStatus: headset.status,
+            newStatus: updatedHeadset.status,
+            observation: 'Atualização de dados',
+            userId,
+          },
+        });
+      }
+
+      return updatedHeadset;
+    });
+  }
+
+  async delete(id: number) {
+    const headset = await prisma.headset.findUnique({
+      where: { id },
+    });
+
+    if (!headset) {
+      throw new Error('Headset não encontrado');
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.headsetHistory.deleteMany({ where: { headsetId: id } });
+      await tx.headset.delete({ where: { id } });
+    });
+  }
+
+  async getHistory(id: number) {
+    return prisma.headsetHistory.findMany({
+      where: { headsetId: id },
+      include: {
+        user: { select: { name: true, matricula: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  private async validateUniqueness(lacre?: string | null, numeroSerie?: string | null, id?: number) {
+    if (lacre) {
+      const existingLacre = await prisma.headset.findFirst({
+        where: { lacre, NOT: id ? { id } : undefined },
+      });
+      if (existingLacre) {
+        const error: any = new Error('Já existe um headset cadastrado com este lacre');
+        error.code = 'P2002';
+        throw error;
+      }
+    }
+
+    if (numeroSerie) {
+      const existingSN = await prisma.headset.findFirst({
+        where: { numeroSerie, NOT: id ? { id } : undefined },
+      });
+      if (existingSN) {
+        const error: any = new Error('Já existe um headset cadastrado com este número de série');
+        error.code = 'P2002';
+        throw error;
+      }
+    }
+  }
+}

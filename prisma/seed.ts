@@ -6,15 +6,16 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando seed de dados de teste...');
 
-  // 1. Limpar dados existentes (Opcional, mas ajuda a evitar duplicatas no teste)
-  // Nota: Devido às FKs, a ordem importa ou use deleteMany()
+  // 1. Limpar dados existentes
   await prisma.assetHistory.deleteMany();
   await prisma.asset.deleteMany();
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
+  await prisma.headsetHistory.deleteMany();
   await prisma.user.deleteMany();
   await prisma.rolePermission.deleteMany();
   await prisma.role.deleteMany();
+  await prisma.headset.deleteMany();
 
   // 2. Criar Cargos e Permissões
   const adminRole = await prisma.role.create({
@@ -68,9 +69,12 @@ async function main() {
   // 3. Criar Usuários
   const password = await bcrypt.hash('123456', 10);
   
+  const adminUser = await prisma.user.create({
+    data: { matricula: 'admin', name: 'Admin do Sistema', password, roleId: adminRole.id }
+  });
+
   await prisma.user.createMany({
     data: [
-      { matricula: 'admin', name: 'Admin do Sistema', password, roleId: adminRole.id },
       { matricula: '100001', name: 'João Operador', password, roleId: operatorRole.id },
       { matricula: '100002', name: 'Maria Supervisora', password, roleId: supervisorRole.id },
       { matricula: '100003', name: 'Carlos Técnico', password, roleId: operatorRole.id },
@@ -110,23 +114,63 @@ async function main() {
     )
   );
 
-  // 6. Criar Ativos (Assets) - 40 ativos para testar paginação
+  // 6. Criar Ativos (Assets)
   console.log('📦 Gerando 40 ativos de exemplo...');
-  const statuses: AssetStatus[] = ['DISPONIVEL', 'EM_USO', 'EM_MANUTENCAO', 'DEFEITO'];
+  const assetStatuses: AssetStatus[] = ['DISPONIVEL', 'EM_USO', 'EM_MANUTENCAO', 'DEFEITO'];
   const locations = ['Sede Central', 'Filial Norte', 'Depósito A', 'Escritório 01', 'TI - Suporte'];
 
   for (let i = 1; i <= 40; i++) {
     const prodIdx = Math.floor(Math.random() * products.length);
-    const statusIdx = Math.floor(Math.random() * statuses.length);
+    const statusIdx = Math.floor(Math.random() * assetStatuses.length);
     const locIdx = Math.floor(Math.random() * locations.length);
 
-    await prisma.asset.create({
+    const asset = await prisma.asset.create({
       data: {
         patrimonio: `PAT${String(i).padStart(5, '0')}`,
-        status: statuses[statusIdx],
+        status: assetStatuses[statusIdx],
         location: locations[locIdx],
         responsible: i % 3 === 0 ? 'Departamento de TI' : 'Almoxarifado Central',
         productId: products[prodIdx].id,
+      }
+    });
+
+    await prisma.assetHistory.create({
+      data: {
+        assetId: asset.id,
+        newStatus: asset.status,
+        newLocation: asset.location,
+        observation: 'Criação inicial',
+        userId: adminUser.id
+      }
+    });
+  }
+
+  // 7. Criar Headsets
+  console.log('🎧 Gerando 15 headsets de exemplo...');
+  const headsetBrands = ['Logitech', 'Jabra', 'Plantronics', 'Sennheiser', 'HyperX'];
+  const headsetStatuses = ['EM USO', 'RESERVA', 'TROCA PENDENTE', 'DESLIGADO'];
+
+  for (let i = 1; i <= 15; i++) {
+    const brandIdx = Math.floor(Math.random() * headsetBrands.length);
+    const statusIdx = Math.floor(Math.random() * headsetStatuses.length);
+    
+    const headset = await prisma.headset.create({
+      data: {
+        matricula: `M${100000 + i}`,
+        lacre: i % 3 === 0 ? null : `L${String(i).padStart(4, '0')}`, // Alguns sem lacre
+        marca: headsetBrands[brandIdx],
+        numeroSerie: i % 5 === 0 ? null : `SN${Math.random().toString(36).substring(2, 10).toUpperCase()}`, // Alguns sem S/N
+        status: headsetStatuses[statusIdx],
+        observacoes: i % 5 === 0 ? 'Equipamento reserva' : null,
+      }
+    });
+
+    await prisma.headsetHistory.create({
+      data: {
+        headsetId: headset.id,
+        newStatus: headset.status,
+        observation: 'Criação inicial',
+        userId: adminUser.id
       }
     });
   }
@@ -137,7 +181,8 @@ async function main() {
   console.log('- 4 Usuários (Senha padrão: 123456)');
   console.log('- 5 Categorias');
   console.log('- 8 Produtos');
-  console.log('- 40 Ativos de Ativos');
+  console.log('- 40 Ativos com Histórico');
+  console.log('- 15 Headsets com Histórico');
 }
 
 main()

@@ -11,6 +11,7 @@ import { categoryRoutes } from './modules/category/category.routes';
 import { assetRoutes } from './modules/asset/asset.routes';
 import { userRoutes } from './modules/user/user.routes';
 import { permissionRoutes } from './modules/permission/permission.routes';
+import { headsetRoutes } from './modules/headset/headset.routes';
 import { ZodError } from 'zod';
 
 export const app = fastify();
@@ -43,6 +44,7 @@ app.get('/', async () => {
 app.register(authRoutes, { prefix: '/auth' });
 app.register(userRoutes, { prefix: '/users' });
 app.register(permissionRoutes, { prefix: '/permissions' });
+app.register(headsetRoutes, { prefix: '/headsets' });
 app.register(productRoutes, { prefix: '/products' });
 app.register(categoryRoutes, { prefix: '/categories' });
 app.register(assetRoutes, { prefix: '/assets' });

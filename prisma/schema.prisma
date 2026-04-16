@@ -30,16 +30,17 @@ model RolePermission {
 }
 
 model User {
-  id             String         @id @default(uuid())
-  matricula      String         @unique
-  name           String
-  password       String
-  avatarUrl      String?
-  roleId         String
-  role           Role           @relation(fields: [roleId], references: [id])
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @default(now()) @updatedAt
-  assetHistories AssetHistory[]
+  id               String           @id @default(uuid())
+  matricula        String           @unique
+  name             String
+  password         String
+  avatarUrl        String?
+  roleId           String
+  role             Role             @relation(fields: [roleId], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now()) @updatedAt
+  assetHistories   AssetHistory[]
+  headsetHistories HeadsetHistory[]
 }
 
 model Category {
@@ -94,4 +95,31 @@ model AssetHistory {
   userId      String
   user        User         @relation(fields: [userId], references: [id])
   createdAt   DateTime     @default(now())
+}
+
+model Headset {
+  id          Int              @id @default(autoincrement())
+  matricula   String
+  lacre       String?          @unique
+  marca       String
+  numeroSerie String?          @unique
+  status      String
+  observacoes String?
+  history     HeadsetHistory[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model HeadsetHistory {
+  id          Int      @id @default(autoincrement())
+  headsetId   Int
+  headset     Headset  @relation(fields: [headsetId], references: [id])
+  oldStatus   String?
+  newStatus   String
+  oldLocation String?
+  newLocation String?
+  observation String?  @db.VarChar(500)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
 }
