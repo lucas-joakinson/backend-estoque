@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 export const headsetSchema = z.object({
   matricula: z.string().min(1, 'Matrícula é obrigatória'),
-  lacre: z.string().max(5, 'Lacre deve ter no máximo 5 caracteres').optional().nullable(),
+  lacre: z.string().min(1, 'Lacre é obrigatório').max(5, 'Lacre deve ter no máximo 5 caracteres'),
   marca: z.string().min(1, 'Marca é obrigatória'),
   numeroSerie: z.string().optional().nullable(),
   status: z.enum(['EM USO', 'RESERVA', 'TROCA PENDENTE', 'DESLIGADO'], {
@@ -129,12 +129,21 @@ export class HeadsetService {
 
     return prisma.$transaction(async (tx) => {
       const results = await Promise.all(data.map(async (h) => {
-        const headset = await tx.headset.create({ data: h });
+        const normalizedData = {
+          ...h,
+          matricula: h.matricula.trim(),
+          lacre: h.lacre!.trim(),
+          marca: h.marca.trim(),
+          numeroSerie: h.numeroSerie?.trim(),
+          status: h.status.toUpperCase().trim(),
+        };
+
+        const headset = await tx.headset.create({ data: normalizedData });
         await tx.headsetHistory.create({
           data: {
             headsetId: headset.id,
             newStatus: headset.status,
-            observation: 'Criação inicial (Lote)',
+            observation: 'Criação inicial (Importação Excel)',
             userId,
           },
         });

@@ -157,9 +157,9 @@ async function main() {
     const headset = await prisma.headset.create({
       data: {
         matricula: `M${100000 + i}`,
-        lacre: i % 3 === 0 ? null : `L${String(i).padStart(4, '0')}`, // Alguns sem lacre
+        lacre: `L${String(i).padStart(4, '0')}`, // Agora todos têm lacre
         marca: headsetBrands[brandIdx],
-        numeroSerie: i % 5 === 0 ? null : `SN${Math.random().toString(36).substring(2, 10).toUpperCase()}`, // Alguns sem S/N
+        numeroSerie: i % 5 === 0 ? null : `SN${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
         status: headsetStatuses[statusIdx],
         observacoes: i % 5 === 0 ? 'Equipamento reserva' : null,
       }
