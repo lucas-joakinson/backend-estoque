@@ -12,10 +12,12 @@ async function main() {
   await prisma.product.deleteMany();
   await prisma.category.deleteMany();
   await prisma.headsetHistory.deleteMany();
+  await prisma.computerHistory.deleteMany();
   await prisma.user.deleteMany();
   await prisma.rolePermission.deleteMany();
   await prisma.role.deleteMany();
   await prisma.headset.deleteMany();
+  await prisma.computador.deleteMany();
 
   // 2. Criar Cargos e Permissões
   const adminRole = await prisma.role.create({
@@ -157,7 +159,7 @@ async function main() {
     const headset = await prisma.headset.create({
       data: {
         matricula: `M${100000 + i}`,
-        lacre: `L${String(i).padStart(4, '0')}`, // Agora todos têm lacre
+        lacre: `L${String(i).padStart(4, '0')}`,
         marca: headsetBrands[brandIdx],
         numeroSerie: i % 5 === 0 ? null : `SN${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
         status: headsetStatuses[statusIdx],
@@ -175,6 +177,33 @@ async function main() {
     });
   }
 
+  // 8. Criar Computadores
+  console.log('💻 Gerando 10 computadores de exemplo...');
+  const computerStatuses = ['Em uso', 'Manutenção', 'Defeito', 'Troca pendente', 'Em estoque'];
+
+  for (let i = 1; i <= 10; i++) {
+    const statusIdx = Math.floor(Math.random() * computerStatuses.length);
+
+    const computer = await prisma.computador.create({
+      data: {
+        patrimonio: `CPU${String(i).padStart(4, '0')}`,
+        hostname: `PC-PLANSUL-${String(i).padStart(3, '0')}`,
+        status: computerStatuses[statusIdx],
+        localizacao: i % 2 === 0 ? 'Sede Central' : 'Filial Norte',
+      }
+    });
+
+    await prisma.computerHistory.create({
+      data: {
+        computadorId: computer.id,
+        newStatus: computer.status,
+        newLocation: computer.localizacao,
+        observation: 'Criação inicial',
+        userId: adminUser.id
+      }
+    });
+  }
+
   console.log('✅ Seed finalizado com sucesso!');
   console.log('--- Resumo dos Dados ---');
   console.log('- 3 Cargos (ADMIN, OPERATOR, SUPERVISOR)');
@@ -183,6 +212,7 @@ async function main() {
   console.log('- 8 Produtos');
   console.log('- 40 Ativos com Histórico');
   console.log('- 15 Headsets com Histórico');
+  console.log('- 10 Computadores com Histórico');
 }
 
 main()

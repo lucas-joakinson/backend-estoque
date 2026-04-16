@@ -41,6 +41,7 @@ model User {
   updatedAt        DateTime         @default(now()) @updatedAt
   assetHistories   AssetHistory[]
   headsetHistories HeadsetHistory[]
+  computerHistories ComputerHistory[]
 }
 
 model Category {
@@ -122,4 +123,29 @@ model HeadsetHistory {
   userId      String
   user        User     @relation(fields: [userId], references: [id])
   createdAt   DateTime @default(now())
+}
+
+model Computador {
+  id          Int               @id @default(autoincrement())
+  patrimonio  String            @unique
+  hostname    String
+  status      String
+  localizacao String
+  history     ComputerHistory[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model ComputerHistory {
+  id           Int        @id @default(autoincrement())
+  computadorId Int
+  computador   Computador @relation(fields: [computadorId], references: [id])
+  oldStatus    String?
+  newStatus    String
+  oldLocation  String?
+  newLocation  String?
+  observation  String?    @db.VarChar(500)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id])
+  createdAt    DateTime   @default(now())
 }
