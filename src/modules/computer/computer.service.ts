@@ -164,6 +164,7 @@ export class ComputerService {
 
     const hasStatusChange = data.status !== undefined && data.status !== computer.status;
     const hasLocationChange = data.localizacao !== undefined && data.localizacao !== computer.localizacao;
+    const hasObservationChange = data.observacoes !== undefined && data.observacoes !== computer.observacoes;
 
     return prisma.$transaction(async (tx) => {
       const updatedComputer = await tx.computador.update({
@@ -171,7 +172,7 @@ export class ComputerService {
         data,
       });
 
-      if (hasStatusChange || hasLocationChange) {
+      if (hasStatusChange || hasLocationChange || hasObservationChange) {
         await tx.computerHistory.create({
           data: {
             computadorId: id,
@@ -179,7 +180,7 @@ export class ComputerService {
             newStatus: updatedComputer.status,
             oldLocation: computer.localizacao,
             newLocation: updatedComputer.localizacao,
-            observation: 'Atualização de dados',
+            observation: data.observacoes || 'Atualização de dados',
             userId,
           },
         });
