@@ -2,12 +2,15 @@ import { prisma } from '../../shared/db/prisma';
 import { z } from 'zod';
 
 export const computerSchema = z.object({
-  patrimonio: z.string().min(1, 'Patrimônio é obrigatório'),
-  hostname: z.string().min(1, 'Hostname é obrigatório'),
+  patrimonio: z.string().min(1, 'Patrimônio é obrigatório').max(5, 'Patrimônio deve ter no máximo 5 caracteres'),
+  hostname: z.string()
+    .min(1, 'Hostname é obrigatório')
+    .regex(/^PR721ET/i, 'Hostname deve começar com PR721ET'),
   status: z.enum(['Em uso', 'Manutenção', 'Defeito', 'Troca pendente', 'Em estoque'], {
     errorMap: () => ({ message: 'Status inválido' }),
   }),
   localizacao: z.string().min(1, 'Localização é obrigatória'),
+  observacoes: z.string().optional().nullable(),
 });
 
 export const bulkComputerSchema = z.array(computerSchema).min(1, 'O lote deve conter pelo menos um computador');

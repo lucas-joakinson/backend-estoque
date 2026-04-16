@@ -131,6 +131,7 @@ model Computador {
   hostname    String
   status      String
   localizacao String
+  observacoes String?
   history     ComputerHistory[]
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
