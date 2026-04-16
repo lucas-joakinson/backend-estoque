@@ -96,7 +96,7 @@ export class ComputerController {
 
     try {
       const { id } = paramsSchema.parse(request.params);
-      const data = computerSchema.parse(request.body);
+      const data = computerSchema.partial().parse(request.body);
       const computer = await this.computerService.update(id, data, userId);
       return reply.status(200).send(computer);
     } catch (error: any) {

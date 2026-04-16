@@ -23,6 +23,7 @@ export const computerQuerySchema = z.object({
 });
 
 export type ComputerInput = z.infer<typeof computerSchema>;
+export type ComputerUpdateInput = Partial<ComputerInput>;
 export type ComputerQueryInput = z.infer<typeof computerQuerySchema>;
 
 export class ComputerService {
@@ -148,7 +149,7 @@ export class ComputerService {
     });
   }
 
-  async update(id: number, data: ComputerInput, userId: string) {
+  async update(id: number, data: ComputerUpdateInput, userId: string) {
     const computer = await prisma.computador.findUnique({
       where: { id },
     });
@@ -157,10 +158,12 @@ export class ComputerService {
       throw new Error('Computador não encontrado');
     }
 
-    await this.validateUniqueness(data.patrimonio, id);
+    if (data.patrimonio) {
+      await this.validateUniqueness(data.patrimonio, id);
+    }
 
-    const hasStatusChange = data.status !== computer.status;
-    const hasLocationChange = data.localizacao !== computer.localizacao;
+    const hasStatusChange = data.status !== undefined && data.status !== computer.status;
+    const hasLocationChange = data.localizacao !== undefined && data.localizacao !== computer.localizacao;
 
     return prisma.$transaction(async (tx) => {
       const updatedComputer = await tx.computador.update({
