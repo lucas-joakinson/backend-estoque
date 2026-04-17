@@ -161,34 +161,40 @@ export class AssetService {
     }
 
     return prisma.$transaction(async (tx) => {
-      const createdAssets = await Promise.all(data.map(async (assetData) => {
-        const patrimonioPadded = assetData.patrimonio.padStart(6, '0');
-        
-        const asset = await tx.asset.create({
-          data: {
-            patrimonio: patrimonioPadded,
-            location: assetData.location,
-            responsible: assetData.responsible,
-            productId: assetData.productId,
-            status: assetData.status,
-          },
-        });
-
-        await tx.assetHistory.create({
-          data: {
-            assetId: asset.id,
-            newStatus: asset.status,
-            newLocation: asset.location,
-            observation: 'Criação inicial do ativo (Lote)',
-            userId,
-          },
-        });
-
-        return asset;
+      const assetsData = data.map(assetData => ({
+        patrimonio: assetData.patrimonio.padStart(6, '0'),
+        location: assetData.location,
+        responsible: assetData.responsible,
+        productId: assetData.productId,
+        status: assetData.status,
       }));
 
+      // 1. Inserção em massa
+      await tx.asset.createMany({
+        data: assetsData,
+      });
+
+      // 2. Recupera os IDs para o histórico
+      const createdAssets = await tx.asset.findMany({
+        where: { patrimonio: { in: assetsData.map(a => a.patrimonio) } },
+        select: { id: true, status: true, location: true },
+      });
+
+      // 3. Histórico em massa
+      const historyData = createdAssets.map(asset => ({
+        assetId: asset.id,
+        newStatus: asset.status,
+        newLocation: asset.location,
+        observation: 'Criação inicial do ativo (Lote Otimizado)',
+        userId,
+      }));
+
+      await tx.assetHistory.createMany({
+        data: historyData,
+      });
+
       return { count: createdAssets.length };
-    });
+    }, { timeout: 30000 });
   }
 
   async getStats() {
@@ -294,6 +300,44 @@ export class AssetService {
     await prisma.$transaction(async (tx) => {
       await tx.assetHistory.deleteMany({ where: { assetId: id } });
       await tx.asset.delete({ where: { id } });
+    });
+  }
+
+  async updateBulk(ids: string[], data: UpdateAssetInput, userId: string) {
+    const assets = await prisma.asset.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, status: true, location: true },
+    });
+
+    if (assets.length === 0) {
+      throw new Error('Nenhum ativo encontrado para atualizar');
+    }
+
+    return prisma.$transaction(async (tx) => {
+      await tx.asset.updateMany({
+        where: { id: { in: ids } },
+        data: {
+          status: data.status,
+          location: data.location,
+          responsible: data.responsible,
+        },
+      });
+
+      const historyData = assets.map(asset => ({
+        assetId: asset.id,
+        oldStatus: asset.status,
+        newStatus: data.status || asset.status,
+        oldLocation: asset.location,
+        newLocation: data.location || asset.location,
+        observation: data.observation || 'Atualização em lote',
+        userId,
+      }));
+
+      await tx.assetHistory.createMany({
+        data: historyData,
+      });
+
+      return { count: assets.length };
     });
   }
 }

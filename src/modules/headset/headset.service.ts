@@ -306,6 +306,40 @@ export class HeadsetService {
     });
   }
 
+  async updateBulk(ids: number[], data: HeadsetUpdateInput, userId: string) {
+    const headsets = await prisma.headset.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, status: true },
+    });
+
+    if (headsets.length === 0) {
+      throw new Error('Nenhum headset encontrado para atualizar');
+    }
+
+    return prisma.$transaction(async (tx) => {
+      // 1. Atualiza todos os headsets
+      await tx.headset.updateMany({
+        where: { id: { in: ids } },
+        data,
+      });
+
+      // 2. Cria históricos em massa
+      const historyData = headsets.map(h => ({
+        headsetId: h.id,
+        oldStatus: h.status,
+        newStatus: data.status || h.status,
+        observation: data.observacoes || 'Atualização em lote',
+        userId,
+      }));
+
+      await tx.headsetHistory.createMany({
+        data: historyData,
+      });
+
+      return { count: headsets.length };
+    });
+  }
+
   async getHistory(id: number) {
     return prisma.headsetHistory.findMany({
       where: { headsetId: id },

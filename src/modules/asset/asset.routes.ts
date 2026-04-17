@@ -37,6 +37,10 @@ export async function assetRoutes(app: FastifyInstance) {
     assetController.update(request, reply)
   );
 
+  app.patch('/bulk', { preHandler: [auth] }, (request, reply) => 
+    assetController.updateBulk(request, reply)
+  );
+
   app.delete('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
     assetController.delete(request, reply)
   );

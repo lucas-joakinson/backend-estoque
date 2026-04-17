@@ -134,4 +134,22 @@ export class ComputerController {
       return reply.status(400).send({ message: error.message });
     }
   }
+
+  async updateBulk(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ message: 'Não autenticado' });
+
+    const bulkUpdateSchema = z.object({
+      ids: z.array(z.number()),
+      data: computerSchema.partial(),
+    });
+
+    try {
+      const { ids, data } = bulkUpdateSchema.parse(request.body);
+      const result = await this.computerService.updateBulk(ids, data, userId);
+      return reply.status(200).send(result);
+    } catch (error: any) {
+      return reply.status(400).send({ message: error.message });
+    }
+  }
 }

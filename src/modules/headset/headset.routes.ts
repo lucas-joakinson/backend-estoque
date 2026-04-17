@@ -33,6 +33,10 @@ export async function headsetRoutes(app: FastifyInstance) {
     headsetController.update(request, reply)
   );
 
+  app.patch('/bulk', { preHandler: [auth] }, (request, reply) => 
+    headsetController.updateBulk(request, reply)
+  );
+
   app.delete('/:id', { preHandler: [auth] }, (request, reply) => 
     headsetController.delete(request, reply)
   );

@@ -122,31 +122,39 @@ export class ComputerService {
     }
 
     return prisma.$transaction(async (tx) => {
-      const results = await Promise.all(data.map(async (c) => {
-        const normalizedData = {
-          ...c,
-          patrimonio: c.patrimonio.trim(),
-          hostname: c.hostname.trim(),
-          localizacao: c.localizacao.trim(),
-        };
-
-        const computer = await tx.computador.create({ data: normalizedData });
-        
-        await tx.computerHistory.create({
-          data: {
-            computadorId: computer.id,
-            newStatus: computer.status,
-            newLocation: computer.localizacao,
-            observation: 'Criação inicial (Importação)',
-            userId,
-          },
-        });
-        
-        return computer;
+      const normalizedData = data.map(c => ({
+        ...c,
+        patrimonio: c.patrimonio.trim(),
+        hostname: c.hostname.trim(),
+        localizacao: c.localizacao.trim(),
       }));
 
-      return { count: results.length };
-    });
+      // 1. Inserção em massa
+      await tx.computador.createMany({
+        data: normalizedData,
+      });
+
+      // 2. Recupera os IDs para o histórico
+      const createdComputers = await tx.computador.findMany({
+        where: { patrimonio: { in: patrimonios } },
+        select: { id: true, status: true, localizacao: true },
+      });
+
+      // 3. Histórico em massa
+      const historyData = createdComputers.map(c => ({
+        computadorId: c.id,
+        newStatus: c.status,
+        newLocation: c.localizacao,
+        observation: 'Criação inicial (Lote Otimizado)',
+        userId,
+      }));
+
+      await tx.computerHistory.createMany({
+        data: historyData,
+      });
+
+      return { count: createdComputers.length };
+    }, { timeout: 30000 });
   }
 
   async update(id: number, data: ComputerUpdateInput, userId: string) {
@@ -202,6 +210,40 @@ export class ComputerService {
     await prisma.$transaction(async (tx) => {
       await tx.computerHistory.deleteMany({ where: { computadorId: id } });
       await tx.computador.delete({ where: { id } });
+    });
+  }
+
+  async updateBulk(ids: number[], data: ComputerUpdateInput, userId: string) {
+    const computers = await tx.computador.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, status: true, localizacao: true },
+    });
+
+    if (computers.length === 0) {
+      throw new Error('Nenhum computador encontrado para atualizar');
+    }
+
+    return prisma.$transaction(async (tx) => {
+      await tx.computador.updateMany({
+        where: { id: { in: ids } },
+        data,
+      });
+
+      const historyData = computers.map(c => ({
+        computadorId: c.id,
+        oldStatus: c.status,
+        newStatus: data.status || c.status,
+        oldLocation: c.localizacao,
+        newLocation: data.localizacao || c.localizacao,
+        observation: data.observacoes || 'Atualização em lote',
+        userId,
+      }));
+
+      await tx.computerHistory.createMany({
+        data: historyData,
+      });
+
+      return { count: computers.length };
     });
   }
 

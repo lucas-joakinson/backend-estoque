@@ -33,6 +33,10 @@ export async function computerRoutes(app: FastifyInstance) {
     computerController.update(request, reply)
   );
 
+  app.patch('/bulk', { preHandler: [auth] }, (request, reply) => 
+    computerController.updateBulk(request, reply)
+  );
+
   app.delete('/:id', { preHandler: [auth] }, (request, reply) => 
     computerController.delete(request, reply)
   );
