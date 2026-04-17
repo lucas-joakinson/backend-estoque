@@ -26,6 +26,15 @@ export class HeadsetController {
     }
   }
 
+  async getStats(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const result = await this.headsetService.getStats();
+      return reply.status(200).send(result);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  }
+
   async getById(request: FastifyRequest, reply: FastifyReply) {
     try {
       const { id } = paramsSchema.parse(request.params);

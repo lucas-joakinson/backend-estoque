@@ -9,6 +9,10 @@ export async function headsetRoutes(app: FastifyInstance) {
     headsetController.listAll(request, reply)
   );
 
+  app.get('/stats', { preHandler: [auth] }, (request, reply) => 
+    headsetController.getStats(request, reply)
+  );
+
   app.get('/:id', { preHandler: [auth] }, (request, reply) => 
     headsetController.getById(request, reply)
   );

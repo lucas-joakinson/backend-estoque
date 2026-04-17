@@ -16,7 +16,7 @@ export const bulkHeadsetSchema = z.array(headsetSchema).min(1, 'O lote deve cont
 
 export const headsetQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  limit: z.coerce.number().int().positive().max(100).default(10),
+  limit: z.coerce.number().int().positive().max(1000).default(10),
   search: z.string().optional(),
   status: z.string().optional(),
 });
@@ -64,6 +64,30 @@ export class HeadsetService {
         totalPages: Math.ceil(total / limit),
       },
     };
+  }
+
+  async getStats() {
+    const stats = await prisma.headset.groupBy({
+      by: ['status'],
+      _count: {
+        _all: true,
+      },
+    });
+
+    const formattedStats = stats.reduce((acc, curr) => {
+      acc[curr.status] = curr._count._all;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Garante que todos os status apareçam, mesmo que com 0
+    const allStatuses = ['EM_USO', 'RESERVA', 'TROCA_PENDENTE', 'EM_MANUTENCAO', 'DEFEITO', 'DISPONIVEL'];
+    allStatuses.forEach(status => {
+      if (!formattedStats[status]) {
+        formattedStats[status] = 0;
+      }
+    });
+
+    return formattedStats;
   }
 
   async findById(id: number) {
