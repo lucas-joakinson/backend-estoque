@@ -86,6 +86,9 @@ export class HeadsetController {
       if (error instanceof z.ZodError) {
         return reply.status(400).send({ message: 'Erro de validação no lote', errors: error.errors });
       }
+      if (error.code === 'P2002') {
+        return reply.status(409).send({ message: error.message });
+      }
       return reply.status(400).send({ message: error.message });
     }
   }

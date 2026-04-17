@@ -85,7 +85,8 @@ export class HeadsetService {
   }
 
   async create(data: HeadsetInput, userId: string) {
-    await this.validateUniqueness(data.lacre, data.numeroSerie);
+    this.validateStatusAndMatricula(data.status, data.matricula);
+    await this.validateUniqueness(data.lacre, data.numeroSerie, data.matricula);
 
     return prisma.$transaction(async (tx) => {
       const headset = await tx.headset.create({
@@ -117,16 +118,43 @@ export class HeadsetService {
       throw new Error('O lote contém números de série duplicados');
     }
 
+    const matriculas = data.map(h => h.matricula).filter(Boolean) as string[];
+    if (new Set(matriculas).size !== matriculas.length) {
+      throw new Error('O lote contém matrículas duplicadas');
+    }
+
+    // Validação status vs matrícula no lote
+    for (const item of data) {
+      this.validateStatusAndMatricula(item.status, item.matricula);
+    }
+
     // Validação de duplicidade no banco
     const existingLacre = await prisma.headset.findFirst({
       where: { lacre: { in: lacres } },
     });
-    if (existingLacre) throw new Error(`Lacre ${existingLacre.lacre} já existe no sistema`);
+    if (existingLacre) {
+      const error: any = new Error(`Lacre ${existingLacre.lacre} já existe no sistema`);
+      error.code = 'P2002';
+      throw error;
+    }
 
     const existingSerie = await prisma.headset.findFirst({
       where: { numeroSerie: { in: series } },
     });
-    if (existingSerie) throw new Error(`Série ${existingSerie.numeroSerie} já existe no sistema`);
+    if (existingSerie) {
+      const error: any = new Error(`Série ${existingSerie.numeroSerie} já existe no sistema`);
+      error.code = 'P2002';
+      throw error;
+    }
+
+    const existingMatricula = await prisma.headset.findFirst({
+      where: { matricula: { in: matriculas } },
+    });
+    if (existingMatricula) {
+      const error: any = new Error(`Matrícula ${existingMatricula.matricula} já existe no sistema`);
+      error.code = 'P2002';
+      throw error;
+    }
 
     return prisma.$transaction(async (tx) => {
       const results = await Promise.all(data.map(async (h) => {
@@ -164,23 +192,20 @@ export class HeadsetService {
       throw new Error('Headset não encontrado');
     }
 
-    if (data.lacre || data.numeroSerie) {
-      await this.validateUniqueness(data.lacre, data.numeroSerie, id);
+    const newStatus = data.status || headset.status;
+    const newMatricula = data.matricula !== undefined ? data.matricula : headset.matricula;
+
+    this.validateStatusAndMatricula(newStatus, newMatricula);
+
+    if (data.lacre || data.numeroSerie || data.matricula) {
+      await this.validateUniqueness(data.lacre, data.numeroSerie, data.matricula, id);
     }
 
-    // Lógica de desvinculação automática de matrícula para certos status
-    const unlinkingStatuses = ['EM_MANUTENCAO', 'DEFEITO', 'DISPONIVEL'];
-    const isUnlinkingStatus = data.status && unlinkingStatuses.includes(data.status);
-    
     const finalData = { ...data };
     
-    if (isUnlinkingStatus && !data.matricula) {
-      finalData.matricula = null;
-    }
-
-    // NOVA REGRA: Ao adicionar uma matrícula, força o status para EM_USO
+    // NOVA REGRA: Ao adicionar uma matrícula, força o status para EM_USO se não for passado outro status
     const isLinkingMatricula = data.matricula && data.matricula.trim() !== '' && (!headset.matricula);
-    if (isLinkingMatricula && data.status !== 'EM_USO') {
+    if (isLinkingMatricula && !data.status && headset.status !== 'EM_USO') {
       finalData.status = 'EM_USO';
     }
 
@@ -240,7 +265,14 @@ export class HeadsetService {
     });
   }
 
-  private async validateUniqueness(lacre?: string | null, numeroSerie?: string | null, id?: number) {
+  private validateStatusAndMatricula(status: string, matricula?: string | null) {
+    const restrictedStatuses = ['EM_MANUTENCAO', 'DEFEITO', 'DISPONIVEL'];
+    if (restrictedStatuses.includes(status) && matricula && matricula.trim() !== '') {
+      throw new Error('Equipamentos nestes estados não podem possuir matrícula vinculada.');
+    }
+  }
+
+  private async validateUniqueness(lacre?: string | null, numeroSerie?: string | null, matricula?: string | null, id?: number) {
     if (lacre) {
       const existingLacre = await prisma.headset.findFirst({
         where: { lacre, NOT: id ? { id } : undefined },
@@ -258,6 +290,17 @@ export class HeadsetService {
       });
       if (existingSN) {
         const error: any = new Error('Já existe um headset cadastrado com este número de série');
+        error.code = 'P2002';
+        throw error;
+      }
+    }
+
+    if (matricula && matricula.trim() !== '') {
+      const existingMatricula = await prisma.headset.findFirst({
+        where: { matricula, NOT: id ? { id } : undefined },
+      });
+      if (existingMatricula) {
+        const error: any = new Error('Já existe um headset cadastrado com esta matrícula');
         error.code = 'P2002';
         throw error;
       }
