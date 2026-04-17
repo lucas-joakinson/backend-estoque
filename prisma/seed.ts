@@ -150,19 +150,23 @@ async function main() {
   // 7. Criar Headsets
   console.log('🎧 Gerando 15 headsets de exemplo...');
   const headsetBrands = ['Logitech', 'Jabra', 'Plantronics', 'Sennheiser', 'HyperX'];
-  const headsetStatuses = ['EM USO', 'RESERVA', 'TROCA PENDENTE', 'DESLIGADO'];
+  const headsetStatuses: any[] = ['EM_USO', 'RESERVA', 'TROCA_PENDENTE', 'EM_MANUTENCAO', 'DEFEITO', 'DISPONIVEL'];
 
   for (let i = 1; i <= 15; i++) {
     const brandIdx = Math.floor(Math.random() * headsetBrands.length);
     const statusIdx = Math.floor(Math.random() * headsetStatuses.length);
+    const status = headsetStatuses[statusIdx];
     
+    // Desvincular matrícula para certos status
+    const isUnlinked = ['EM_MANUTENCAO', 'DEFEITO', 'DISPONIVEL'].includes(status);
+
     const headset = await prisma.headset.create({
       data: {
-        matricula: `M${100000 + i}`,
+        matricula: isUnlinked ? null : `M${100000 + i}`,
         lacre: `L${String(i).padStart(4, '0')}`,
         marca: headsetBrands[brandIdx],
         numeroSerie: i % 5 === 0 ? null : `SN${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-        status: headsetStatuses[statusIdx],
+        status: status,
         observacoes: i % 5 === 0 ? 'Equipamento reserva' : null,
       }
     });

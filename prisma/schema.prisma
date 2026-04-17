@@ -26,6 +26,12 @@ model RolePermission {
   canManageAssets    Boolean  @default(false)
   canDeleteItems     Boolean  @default(false)
   canViewReports     Boolean  @default(false)
+  // --- NOVAS PERMISSÕES ---
+  canManageComputers Boolean  @default(false)
+  canDeleteComputers Boolean  @default(false)
+  canManageHeadsets  Boolean  @default(false)
+  canDeleteHeadsets  Boolean  @default(false)
+  canExportData      Boolean  @default(false)
   updatedAt          DateTime @default(now()) @updatedAt
 }
 
@@ -98,13 +104,22 @@ model AssetHistory {
   createdAt   DateTime     @default(now())
 }
 
+enum HeadsetStatus {
+  EM_USO
+  RESERVA
+  TROCA_PENDENTE
+  EM_MANUTENCAO
+  DEFEITO
+  DISPONIVEL
+}
+
 model Headset {
   id          Int              @id @default(autoincrement())
-  matricula   String
+  matricula   String?
   lacre       String           @unique
   marca       String
   numeroSerie String?          @unique
-  status      String
+  status      HeadsetStatus    @default(DISPONIVEL)
   observacoes String?
   history     HeadsetHistory[]
   createdAt   DateTime         @default(now())
@@ -112,20 +127,20 @@ model Headset {
 }
 
 model HeadsetHistory {
-  id          Int      @id @default(autoincrement())
+  id          Int            @id @default(autoincrement())
   headsetId   Int
-  headset     Headset  @relation(fields: [headsetId], references: [id])
-  oldStatus   String?
-  newStatus   String
+  headset     Headset        @relation(fields: [headsetId], references: [id])
+  oldStatus   HeadsetStatus?
+  newStatus   HeadsetStatus
   oldLocation String?
   newLocation String?
-  observation String?  @db.VarChar(500)
+  observation String?        @db.VarChar(500)
   userId      String
-  user        User     @relation(fields: [userId], references: [id])
-  createdAt   DateTime @default(now())
-}
+  user        User           @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+  }
 
-model Computador {
+  model Computador {
   id          Int               @id @default(autoincrement())
   patrimonio  String            @unique
   hostname    String

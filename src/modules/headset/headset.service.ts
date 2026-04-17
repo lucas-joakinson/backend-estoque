@@ -2,11 +2,11 @@ import { prisma } from '../../shared/db/prisma';
 import { z } from 'zod';
 
 export const headsetSchema = z.object({
-  matricula: z.string().min(1, 'Matrícula é obrigatória'),
+  matricula: z.string().optional().nullable(),
   lacre: z.string().min(1, 'Lacre é obrigatório').max(5, 'Lacre deve ter no máximo 5 caracteres'),
   marca: z.string().min(1, 'Marca é obrigatória'),
   numeroSerie: z.string().optional().nullable(),
-  status: z.enum(['EM USO', 'RESERVA', 'TROCA PENDENTE', 'DESLIGADO'], {
+  status: z.enum(['EM_USO', 'RESERVA', 'TROCA_PENDENTE', 'EM_MANUTENCAO', 'DEFEITO', 'DISPONIVEL'], {
     errorMap: () => ({ message: 'Status inválido' }),
   }),
   observacoes: z.string().optional().nullable(),
@@ -132,11 +132,11 @@ export class HeadsetService {
       const results = await Promise.all(data.map(async (h) => {
         const normalizedData = {
           ...h,
-          matricula: h.matricula.trim(),
+          matricula: h.matricula?.trim() || null,
           lacre: h.lacre!.trim(),
           marca: h.marca.trim(),
-          numeroSerie: h.numeroSerie?.trim(),
-          status: h.status.toUpperCase().trim(),
+          numeroSerie: h.numeroSerie?.trim() || null,
+          status: (h.status.toUpperCase().trim().replace(/\s+/g, '_') as any),
         };
 
         const headset = await tx.headset.create({ data: normalizedData });
@@ -168,22 +168,44 @@ export class HeadsetService {
       await this.validateUniqueness(data.lacre, data.numeroSerie, id);
     }
 
-    const hasStatusChange = data.status !== undefined && data.status !== headset.status;
+    // Lógica de desvinculação automática de matrícula para certos status
+    const unlinkingStatuses = ['EM_MANUTENCAO', 'DEFEITO', 'DISPONIVEL'];
+    const isUnlinkingStatus = data.status && unlinkingStatuses.includes(data.status);
+    
+    const finalData = { ...data };
+    
+    if (isUnlinkingStatus && !data.matricula) {
+      finalData.matricula = null;
+    }
+
+    // NOVA REGRA: Ao adicionar uma matrícula, força o status para EM_USO
+    const isLinkingMatricula = data.matricula && data.matricula.trim() !== '' && (!headset.matricula);
+    if (isLinkingMatricula && data.status !== 'EM_USO') {
+      finalData.status = 'EM_USO';
+    }
+
+    const hasStatusChange = finalData.status !== undefined && finalData.status !== headset.status;
+    const hasMatriculaChange = finalData.matricula !== undefined && finalData.matricula !== headset.matricula;
     const hasObservationChange = data.observacoes !== undefined && data.observacoes !== headset.observacoes;
 
     return prisma.$transaction(async (tx) => {
       const updatedHeadset = await tx.headset.update({
         where: { id },
-        data,
+        data: finalData,
       });
 
-      if (hasStatusChange || hasObservationChange) {
+      if (hasStatusChange || hasObservationChange || hasMatriculaChange) {
+        let observation = data.observacoes || 'Atualização de dados';
+        if (hasMatriculaChange && !finalData.matricula && headset.matricula) {
+          observation = `Desvinculação de matrícula (${headset.matricula}). ${observation}`;
+        }
+
         await tx.headsetHistory.create({
           data: {
             headsetId: id,
-            oldStatus: headset.status,
+            oldStatus: (headset.status as any),
             newStatus: updatedHeadset.status,
-            observation: data.observacoes || 'Atualização de dados',
+            observation,
             userId,
           },
         });
