@@ -9,6 +9,10 @@ export async function computerRoutes(app: FastifyInstance) {
     computerController.listAll(request, reply)
   );
 
+  app.get('/stats', { preHandler: [auth] }, (request, reply) => 
+    computerController.getStats(request, reply)
+  );
+
   app.get('/:id', { preHandler: [auth] }, (request, reply) => 
     computerController.getById(request, reply)
   );

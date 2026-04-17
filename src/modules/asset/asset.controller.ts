@@ -23,6 +23,15 @@ export class AssetController {
     return reply.status(200).send(result);
   }
 
+  async getStats(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const result = await this.assetService.getStats();
+      return reply.status(200).send(result);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  }
+
   async getHistory(request: FastifyRequest, reply: FastifyReply) {
     const { id } = paramsSchema.parse(request.params);
 

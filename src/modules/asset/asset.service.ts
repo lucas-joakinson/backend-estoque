@@ -191,6 +191,30 @@ export class AssetService {
     });
   }
 
+  async getStats() {
+    const stats = await prisma.asset.groupBy({
+      by: ['status'],
+      _count: {
+        _all: true,
+      },
+    });
+
+    const formattedStats = stats.reduce((acc, curr) => {
+      acc[curr.status] = curr._count._all;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Garante que todos os status apareçam, mesmo que com 0
+    const allStatuses = Object.values(AssetStatus);
+    allStatuses.forEach(status => {
+      if (!formattedStats[status]) {
+        formattedStats[status] = 0;
+      }
+    });
+
+    return formattedStats;
+  }
+
   async getAssetHistory(assetId: string) {
     const asset = await prisma.asset.findUnique({
       where: { id: assetId },

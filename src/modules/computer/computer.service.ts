@@ -215,6 +215,30 @@ export class ComputerService {
     });
   }
 
+  async getStats() {
+    const stats = await prisma.computador.groupBy({
+      by: ['status'],
+      _count: {
+        _all: true,
+      },
+    });
+
+    const formattedStats = stats.reduce((acc, curr) => {
+      acc[curr.status] = curr._count._all;
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Garante que todos os status apareçam, mesmo que com 0
+    const allStatuses = ['Em uso', 'Manutenção', 'Defeito', 'Troca pendente', 'Em estoque'];
+    allStatuses.forEach(status => {
+      if (!formattedStats[status]) {
+        formattedStats[status] = 0;
+      }
+    });
+
+    return formattedStats;
+  }
+
   private async validateUniqueness(patrimonio: string, id?: number) {
     const existing = await prisma.computador.findFirst({
       where: { patrimonio, NOT: id ? { id } : undefined },
