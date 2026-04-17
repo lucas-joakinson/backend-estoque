@@ -198,20 +198,33 @@ export class HeadsetService {
     }
 
     return prisma.$transaction(async (tx) => {
-      const results = await Promise.all(normalizedList.map(async (h) => {
-        const headset = await tx.headset.create({ data: h });
-        await tx.headsetHistory.create({
-          data: {
-            headsetId: headset.id,
-            newStatus: headset.status,
-            observation: 'Criação inicial (Importação Excel)',
-            userId,
-          },
-        });
-        return headset;
+      // 1. Inserção em massa dos headsets
+      await tx.headset.createMany({
+        data: normalizedList,
+        skipDuplicates: false, // Queremos que falhe se houver duplicata inesperada
+      });
+
+      // 2. Busca os IDs gerados para criar o histórico (Prisma createMany não retorna IDs no Postgres de forma simples)
+      const createdHeadsets = await tx.headset.findMany({
+        where: { lacre: { in: lacres } },
+        select: { id: true },
+      });
+
+      // 3. Inserção em massa do histórico
+      const historyData = createdHeadsets.map(h => ({
+        headsetId: h.id,
+        newStatus: 'DISPONIVEL' as any, // Status inicial padrão ou baseado no input
+        observation: 'Criação inicial (Importação Excel Otimizada)',
+        userId,
       }));
 
-      return { count: results.length };
+      await tx.headsetHistory.createMany({
+        data: historyData,
+      });
+
+      return { count: createdHeadsets.length };
+    }, {
+      timeout: 30000 // Aumenta timeout para operações muito grandes
     });
   }
 
