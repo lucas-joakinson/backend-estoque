@@ -85,12 +85,20 @@ export class HeadsetService {
   }
 
   async create(data: HeadsetInput, userId: string) {
-    this.validateStatusAndMatricula(data.status, data.matricula);
-    await this.validateUniqueness(data.lacre, data.numeroSerie, data.matricula);
+    const normalizedData = {
+      ...data,
+      matricula: data.matricula?.trim() || null,
+      numeroSerie: data.numeroSerie?.trim() || null,
+      lacre: data.lacre.trim(),
+      marca: data.marca.trim(),
+    };
+
+    this.validateStatusAndMatricula(normalizedData.status, normalizedData.matricula);
+    await this.validateUniqueness(normalizedData.lacre, normalizedData.numeroSerie, normalizedData.matricula);
 
     return prisma.$transaction(async (tx) => {
       const headset = await tx.headset.create({
-        data,
+        data: normalizedData,
       });
 
       await tx.headsetHistory.create({
@@ -107,24 +115,33 @@ export class HeadsetService {
   }
 
   async createBulk(data: HeadsetInput[], userId: string) {
+    const normalizedList = data.map(h => ({
+      ...h,
+      matricula: h.matricula?.trim() || null,
+      lacre: h.lacre.trim(),
+      marca: h.marca.trim(),
+      numeroSerie: h.numeroSerie?.trim() || null,
+      status: (h.status.toUpperCase().trim().replace(/\s+/g, '_') as any),
+    }));
+
     // Validação de duplicidade no lote
-    const lacres = data.map(h => h.lacre).filter(Boolean) as string[];
+    const lacres = normalizedList.map(h => h.lacre).filter(Boolean);
     if (new Set(lacres).size !== lacres.length) {
       throw new Error('O lote contém lacres duplicados');
     }
 
-    const series = data.map(h => h.numeroSerie).filter(Boolean) as string[];
+    const series = normalizedList.map(h => h.numeroSerie).filter(Boolean) as string[];
     if (new Set(series).size !== series.length) {
       throw new Error('O lote contém números de série duplicados');
     }
 
-    const matriculas = data.map(h => h.matricula).filter(Boolean) as string[];
+    const matriculas = normalizedList.map(h => h.matricula).filter(Boolean) as string[];
     if (new Set(matriculas).size !== matriculas.length) {
       throw new Error('O lote contém matrículas duplicadas');
     }
 
     // Validação status vs matrícula no lote
-    for (const item of data) {
+    for (const item of normalizedList) {
       this.validateStatusAndMatricula(item.status, item.matricula);
     }
 
@@ -157,17 +174,8 @@ export class HeadsetService {
     }
 
     return prisma.$transaction(async (tx) => {
-      const results = await Promise.all(data.map(async (h) => {
-        const normalizedData = {
-          ...h,
-          matricula: h.matricula?.trim() || null,
-          lacre: h.lacre!.trim(),
-          marca: h.marca.trim(),
-          numeroSerie: h.numeroSerie?.trim() || null,
-          status: (h.status.toUpperCase().trim().replace(/\s+/g, '_') as any),
-        };
-
-        const headset = await tx.headset.create({ data: normalizedData });
+      const results = await Promise.all(normalizedList.map(async (h) => {
+        const headset = await tx.headset.create({ data: h });
         await tx.headsetHistory.create({
           data: {
             headsetId: headset.id,
@@ -192,20 +200,26 @@ export class HeadsetService {
       throw new Error('Headset não encontrado');
     }
 
-    const newStatus = data.status || headset.status;
-    const newMatricula = data.matricula !== undefined ? data.matricula : headset.matricula;
+    const normalizedData: HeadsetUpdateInput = { ...data };
+    if (data.matricula !== undefined) normalizedData.matricula = data.matricula?.trim() || null;
+    if (data.numeroSerie !== undefined) normalizedData.numeroSerie = data.numeroSerie?.trim() || null;
+    if (data.lacre !== undefined) normalizedData.lacre = data.lacre.trim();
+    if (data.marca !== undefined) normalizedData.marca = data.marca.trim();
+
+    const newStatus = normalizedData.status || headset.status;
+    const newMatricula = normalizedData.matricula !== undefined ? normalizedData.matricula : headset.matricula;
 
     this.validateStatusAndMatricula(newStatus, newMatricula);
 
-    if (data.lacre || data.numeroSerie || data.matricula) {
-      await this.validateUniqueness(data.lacre, data.numeroSerie, data.matricula, id);
+    if (normalizedData.lacre || normalizedData.numeroSerie || normalizedData.matricula) {
+      await this.validateUniqueness(normalizedData.lacre, normalizedData.numeroSerie, normalizedData.matricula, id);
     }
 
-    const finalData = { ...data };
+    const finalData = { ...normalizedData };
     
     // NOVA REGRA: Ao adicionar uma matrícula, força o status para EM_USO se não for passado outro status
-    const isLinkingMatricula = data.matricula && data.matricula.trim() !== '' && (!headset.matricula);
-    if (isLinkingMatricula && !data.status && headset.status !== 'EM_USO') {
+    const isLinkingMatricula = normalizedData.matricula && normalizedData.matricula.trim() !== '' && (!headset.matricula);
+    if (isLinkingMatricula && !normalizedData.status && headset.status !== 'EM_USO') {
       finalData.status = 'EM_USO';
     }
 
