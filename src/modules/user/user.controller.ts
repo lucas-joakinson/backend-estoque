@@ -139,12 +139,16 @@ export class UserController {
     const { id } = paramsSchema.parse(request.params);
     const loggedUserId = request.user?.id;
 
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
     if (id === loggedUserId) {
       return reply.status(400).send({ message: 'Você não pode excluir seu próprio usuário.' });
     }
 
     try {
-      await this.userService.delete(id);
+      await this.userService.delete(id, loggedUserId);
       return reply.status(204).send();
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });
@@ -163,10 +167,15 @@ export class UserController {
   }
 
   async create(request: FastifyRequest, reply: FastifyReply) {
-    const data = createUserSchema.parse(request.body);
+    const loggedUserId = request.user?.id;
+
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
 
     try {
-      const user = await this.userService.create(data);
+      const data = createUserSchema.parse(request.body);
+      const user = await this.userService.create(data, loggedUserId);
       return reply.status(201).send(user);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });

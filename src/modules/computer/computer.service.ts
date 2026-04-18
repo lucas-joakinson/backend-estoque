@@ -95,6 +95,7 @@ export class ComputerService {
       await tx.computerHistory.create({
         data: {
           computadorId: computer.id,
+          itemName: computer.patrimonio,
           newStatus: computer.status,
           newLocation: computer.localizacao,
           observation: 'Criação inicial',
@@ -107,6 +108,7 @@ export class ComputerService {
   }
 
   async createBulk(data: ComputerInput[], userId: string) {
+    // ... validation
     const patrimonios = data.map(c => c.patrimonio.trim());
     
     if (new Set(patrimonios).size !== patrimonios.length) {
@@ -129,20 +131,18 @@ export class ComputerService {
         localizacao: c.localizacao.trim(),
       }));
 
-      // 1. Inserção em massa
       await tx.computador.createMany({
         data: normalizedData,
       });
 
-      // 2. Recupera os IDs para o histórico
       const createdComputers = await tx.computador.findMany({
         where: { patrimonio: { in: patrimonios } },
-        select: { id: true, status: true, localizacao: true },
+        select: { id: true, patrimonio: true, status: true, localizacao: true },
       });
 
-      // 3. Histórico em massa
       const historyData = createdComputers.map(c => ({
         computadorId: c.id,
+        itemName: c.patrimonio,
         newStatus: c.status,
         newLocation: c.localizacao,
         observation: 'Criação inicial (Lote Otimizado)',
@@ -184,6 +184,7 @@ export class ComputerService {
         await tx.computerHistory.create({
           data: {
             computadorId: id,
+            itemName: computer.patrimonio,
             oldStatus: computer.status,
             newStatus: updatedComputer.status,
             oldLocation: computer.localizacao,
@@ -198,7 +199,7 @@ export class ComputerService {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: number, userId: string) {
     const computer = await prisma.computador.findUnique({
       where: { id },
     });
@@ -208,15 +209,23 @@ export class ComputerService {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.computerHistory.deleteMany({ where: { computadorId: id } });
+      await tx.computerHistory.create({
+        data: {
+          computadorId: null,
+          itemName: computer.patrimonio,
+          newStatus: computer.status,
+          observation: 'Excluiu computador',
+          userId,
+        },
+      });
       await tx.computador.delete({ where: { id } });
     });
   }
 
   async updateBulk(ids: number[], data: ComputerUpdateInput, userId: string) {
-    const computers = await tx.computador.findMany({
+    const computers = await prisma.computador.findMany({
       where: { id: { in: ids } },
-      select: { id: true, status: true, localizacao: true },
+      select: { id: true, patrimonio: true, status: true, localizacao: true },
     });
 
     if (computers.length === 0) {
@@ -231,6 +240,7 @@ export class ComputerService {
 
       const historyData = computers.map(c => ({
         computadorId: c.id,
+        itemName: c.patrimonio,
         oldStatus: c.status,
         newStatus: data.status || c.status,
         oldLocation: c.localizacao,

@@ -14,9 +14,12 @@ export class CategoryController {
   }
 
   async create(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ message: 'Não autenticado' });
+
     const data = categorySchema.parse(request.body);
     try {
-      const category = await this.categoryService.create(data);
+      const category = await this.categoryService.create(data, userId);
       return reply.status(201).send(category);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });
@@ -29,10 +32,13 @@ export class CategoryController {
   }
 
   async update(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ message: 'Não autenticado' });
+
     const { id } = paramsSchema.parse(request.params);
     const data = categorySchema.parse(request.body);
     try {
-      const category = await this.categoryService.update(id, data);
+      const category = await this.categoryService.update(id, data, userId);
       return reply.status(200).send(category);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });
@@ -40,9 +46,12 @@ export class CategoryController {
   }
 
   async delete(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ message: 'Não autenticado' });
+
     const { id } = paramsSchema.parse(request.params);
     try {
-      await this.categoryService.delete(id);
+      await this.categoryService.delete(id, userId);
       return reply.status(204).send();
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });

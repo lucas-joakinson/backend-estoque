@@ -103,7 +103,14 @@ export class NotificationService {
       ? { createdAt: { gt: user.lastActivityClear } } 
       : {};
 
-    const [assetHistory, headsetHistory, computerHistory] = await Promise.all([
+    const [
+      assetHistory, 
+      headsetHistory, 
+      computerHistory,
+      userHistory,
+      categoryHistory,
+      productHistory
+    ] = await Promise.all([
       prisma.assetHistory.findMany({
         where,
         take: 10,
@@ -122,25 +129,61 @@ export class NotificationService {
         orderBy: { createdAt: 'desc' },
         include: { user: true, computador: true },
       }),
+      prisma.userHistory.findMany({
+        where,
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true },
+      }),
+      prisma.categoryHistory.findMany({
+        where,
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true },
+      }),
+      prisma.productHistory.findMany({
+        where,
+        take: 10,
+        orderBy: { createdAt: 'desc' },
+        include: { user: true },
+      }),
     ]);
 
     const activities = [
       ...assetHistory.map((h) => ({
         userName: h.user.name,
         action: h.observation || 'Alterou status',
-        itemName: h.asset.patrimonio,
+        itemName: h.itemName || (h.asset ? h.asset.patrimonio : 'Ativo excluído'),
         timestamp: h.createdAt,
       })),
       ...headsetHistory.map((h) => ({
         userName: h.user.name,
         action: h.observation || 'Alterou status',
-        itemName: h.headset.lacre,
+        itemName: h.itemName || (h.headset ? h.headset.lacre : 'Headset excluído'),
         timestamp: h.createdAt,
       })),
       ...computerHistory.map((h) => ({
         userName: h.user.name,
         action: h.observation || 'Alterou status',
-        itemName: h.computador.patrimonio,
+        itemName: h.itemName || (h.computador ? h.computador.patrimonio : 'Computador excluído'),
+        timestamp: h.createdAt,
+      })),
+      ...userHistory.map((h) => ({
+        userName: h.user.name,
+        action: h.action,
+        itemName: h.itemName,
+        timestamp: h.createdAt,
+      })),
+      ...categoryHistory.map((h) => ({
+        userName: h.user.name,
+        action: h.action,
+        itemName: h.itemName,
+        timestamp: h.createdAt,
+      })),
+      ...productHistory.map((h) => ({
+        userName: h.user.name,
+        action: h.action,
+        itemName: h.itemName,
         timestamp: h.createdAt,
       })),
     ];

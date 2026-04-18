@@ -57,14 +57,30 @@ model User {
   assetHistories   AssetHistory[]
   headsetHistories HeadsetHistory[]
   computerHistories ComputerHistory[]
+  categoryHistories CategoryHistory[]
+  productHistories  ProductHistory[]
+  userTargetHistories UserHistory[] @relation("UserTarget")
+  userActionHistories UserHistory[] @relation("UserPerformer")
 }
 
 model Category {
   id        String    @id @default(uuid())
   name      String    @unique
   products  Product[]
+  history   CategoryHistory[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @default(now()) @updatedAt
+}
+
+model CategoryHistory {
+  id          String   @id @default(uuid())
+  categoryId  String?
+  category    Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  itemName    String
+  action      String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
 }
 
 model Product {
@@ -74,8 +90,31 @@ model Product {
   categoryId String
   category   Category @relation(fields: [categoryId], references: [id])
   assets     Asset[]
+  history    ProductHistory[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @default(now()) @updatedAt
+}
+
+model ProductHistory {
+  id          String   @id @default(uuid())
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  itemName    String
+  action      String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+}
+
+model UserHistory {
+  id          String   @id @default(uuid())
+  targetUserId String?
+  targetUser  User?    @relation("UserTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  itemName    String
+  action      String
+  userId      String
+  user        User     @relation("UserPerformer", fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
 }
 
 enum AssetStatus {
@@ -101,8 +140,9 @@ model Asset {
 
 model AssetHistory {
   id          String       @id @default(uuid())
-  assetId     String
-  asset       Asset        @relation(fields: [assetId], references: [id])
+  assetId     String?
+  asset       Asset?        @relation(fields: [assetId], references: [id], onDelete: SetNull)
+  itemName    String?
   oldStatus   AssetStatus?
   newStatus   AssetStatus
   oldLocation String?
@@ -137,8 +177,9 @@ model Headset {
 
 model HeadsetHistory {
   id          Int            @id @default(autoincrement())
-  headsetId   Int
-  headset     Headset        @relation(fields: [headsetId], references: [id])
+  headsetId   Int?
+  headset     Headset?       @relation(fields: [headsetId], references: [id], onDelete: SetNull)
+  itemName    String?
   oldStatus   HeadsetStatus?
   newStatus   HeadsetStatus
   oldLocation String?
@@ -163,8 +204,9 @@ model HeadsetHistory {
 
 model ComputerHistory {
   id           Int        @id @default(autoincrement())
-  computadorId Int
-  computador   Computador @relation(fields: [computadorId], references: [id])
+  computadorId Int?
+  computador   Computador? @relation(fields: [computadorId], references: [id], onDelete: SetNull)
+  itemName     String?
   oldStatus    String?
   newStatus    String
   oldLocation  String?

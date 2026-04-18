@@ -121,6 +121,7 @@ export class AssetService {
       await tx.assetHistory.create({
         data: {
           assetId: asset.id,
+          itemName: asset.patrimonio,
           newStatus: asset.status,
           newLocation: asset.location,
           observation: 'Criação inicial do ativo',
@@ -177,12 +178,13 @@ export class AssetService {
       // 2. Recupera os IDs para o histórico
       const createdAssets = await tx.asset.findMany({
         where: { patrimonio: { in: assetsData.map(a => a.patrimonio) } },
-        select: { id: true, status: true, location: true },
+        select: { id: true, patrimonio: true, status: true, location: true },
       });
 
       // 3. Histórico em massa
       const historyData = createdAssets.map(asset => ({
         assetId: asset.id,
+        itemName: asset.patrimonio,
         newStatus: asset.status,
         newLocation: asset.location,
         observation: 'Criação inicial do ativo (Lote Otimizado)',
@@ -219,6 +221,32 @@ export class AssetService {
     });
 
     return formattedStats;
+  }
+
+  async getCategoryStats() {
+    const categoriesWithCounts = await prisma.category.findMany({
+      select: {
+        name: true,
+        products: {
+          select: {
+            _count: {
+              select: { assets: true }
+            }
+          }
+        }
+      }
+    });
+
+    const stats = categoriesWithCounts
+      .map(category => {
+        const count = category.products.reduce((acc, product) => acc + product._count.assets, 0);
+        return { name: category.name, count };
+      })
+      .filter(stat => stat.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 15);
+
+    return stats;
   }
 
   async getAssetHistory(assetId: string) {
@@ -275,11 +303,12 @@ export class AssetService {
       await tx.assetHistory.create({
         data: {
           assetId: id,
+          itemName: asset.patrimonio,
           oldStatus: asset.status,
           newStatus: updatedAsset.status,
           oldLocation: asset.location,
           newLocation: updatedAsset.location,
-          observation: data.observation,
+          observation: data.observation || 'Editou status/localização',
           userId,
         },
       });
@@ -288,7 +317,7 @@ export class AssetService {
     });
   }
 
-  async delete(id: string) {
+  async delete(id: string, userId: string) {
     const asset = await prisma.asset.findUnique({
       where: { id },
     });
@@ -298,7 +327,15 @@ export class AssetService {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.assetHistory.deleteMany({ where: { assetId: id } });
+      await tx.assetHistory.create({
+        data: {
+          assetId: null,
+          itemName: asset.patrimonio,
+          newStatus: asset.status,
+          observation: 'Excluiu ativo',
+          userId,
+        },
+      });
       await tx.asset.delete({ where: { id } });
     });
   }
@@ -306,7 +343,7 @@ export class AssetService {
   async updateBulk(ids: string[], data: UpdateAssetInput, userId: string) {
     const assets = await prisma.asset.findMany({
       where: { id: { in: ids } },
-      select: { id: true, status: true, location: true },
+      select: { id: true, patrimonio: true, status: true, location: true },
     });
 
     if (assets.length === 0) {
@@ -325,6 +362,7 @@ export class AssetService {
 
       const historyData = assets.map(asset => ({
         assetId: asset.id,
+        itemName: asset.patrimonio,
         oldStatus: asset.status,
         newStatus: data.status || asset.status,
         oldLocation: asset.location,

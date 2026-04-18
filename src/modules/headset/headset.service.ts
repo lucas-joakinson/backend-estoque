@@ -130,6 +130,7 @@ export class HeadsetService {
       await tx.headsetHistory.create({
         data: {
           headsetId: headset.id,
+          itemName: `Headset Lacre ${headset.lacre}`,
           newStatus: headset.status,
           observation: 'Criação inicial',
           userId,
@@ -141,6 +142,7 @@ export class HeadsetService {
   }
 
   async createBulk(data: HeadsetInput[], userId: string) {
+    // ... keep validation
     const normalizedList = data.map(h => ({
       ...h,
       matricula: h.matricula?.trim() || null,
@@ -200,22 +202,19 @@ export class HeadsetService {
     }
 
     return prisma.$transaction(async (tx) => {
-      // 1. Inserção em massa dos headsets
       await tx.headset.createMany({
         data: normalizedList,
-        skipDuplicates: false, // Queremos que falhe se houver duplicata inesperada
       });
 
-      // 2. Busca os IDs gerados para criar o histórico (Prisma createMany não retorna IDs no Postgres de forma simples)
       const createdHeadsets = await tx.headset.findMany({
         where: { lacre: { in: lacres } },
-        select: { id: true },
+        select: { id: true, lacre: true, status: true },
       });
 
-      // 3. Inserção em massa do histórico
       const historyData = createdHeadsets.map(h => ({
         headsetId: h.id,
-        newStatus: 'DISPONIVEL' as any, // Status inicial padrão ou baseado no input
+        itemName: `Headset Lacre ${h.lacre}`,
+        newStatus: h.status,
         observation: 'Criação inicial (Importação Excel Otimizada)',
         userId,
       }));
@@ -226,7 +225,7 @@ export class HeadsetService {
 
       return { count: createdHeadsets.length };
     }, {
-      timeout: 30000 // Aumenta timeout para operações muito grandes
+      timeout: 30000
     });
   }
 
@@ -281,6 +280,7 @@ export class HeadsetService {
         await tx.headsetHistory.create({
           data: {
             headsetId: id,
+            itemName: `Headset Lacre ${headset.lacre}`,
             oldStatus: (headset.status as any),
             newStatus: updatedHeadset.status,
             observation,
@@ -293,7 +293,7 @@ export class HeadsetService {
     });
   }
 
-  async delete(id: number) {
+  async delete(id: number, userId: string) {
     const headset = await prisma.headset.findUnique({
       where: { id },
     });
@@ -303,7 +303,15 @@ export class HeadsetService {
     }
 
     await prisma.$transaction(async (tx) => {
-      await tx.headsetHistory.deleteMany({ where: { headsetId: id } });
+      await tx.headsetHistory.create({
+        data: {
+          headsetId: null,
+          itemName: `Headset Lacre ${headset.lacre}`,
+          newStatus: headset.status,
+          observation: 'Excluiu headset',
+          userId,
+        },
+      });
       await tx.headset.delete({ where: { id } });
     });
   }
@@ -311,7 +319,7 @@ export class HeadsetService {
   async updateBulk(ids: number[], data: HeadsetUpdateInput, userId: string) {
     const headsets = await prisma.headset.findMany({
       where: { id: { in: ids } },
-      select: { id: true, status: true },
+      select: { id: true, lacre: true, status: true },
     });
 
     if (headsets.length === 0) {
@@ -319,15 +327,14 @@ export class HeadsetService {
     }
 
     return prisma.$transaction(async (tx) => {
-      // 1. Atualiza todos os headsets
       await tx.headset.updateMany({
         where: { id: { in: ids } },
         data,
       });
 
-      // 2. Cria históricos em massa
       const historyData = headsets.map(h => ({
         headsetId: h.id,
+        itemName: `Headset Lacre ${h.lacre}`,
         oldStatus: h.status,
         newStatus: data.status || h.status,
         observation: data.observacoes || 'Atualização em lote',

@@ -59,7 +59,7 @@ export class ProductService {
     };
   }
 
-  async create(data: CreateProductInput) {
+  async create(data: CreateProductInput, userId: string) {
     const categoryExists = await prisma.category.findUnique({
       where: { id: data.categoryId },
     });
@@ -68,15 +68,28 @@ export class ProductService {
       throw new Error('Categoria não encontrada');
     }
 
-    return prisma.product.create({
-      data,
-      include: {
-        category: true,
-      },
+    return prisma.$transaction(async (tx) => {
+      const product = await tx.product.create({
+        data,
+        include: {
+          category: true,
+        },
+      });
+
+      await tx.productHistory.create({
+        data: {
+          productId: product.id,
+          itemName: `Produto: ${product.name}`,
+          action: 'Criou',
+          userId,
+        }
+      });
+
+      return product;
     });
   }
 
-  async update(id: string, data: Partial<CreateProductInput>) {
+  async update(id: string, data: Partial<CreateProductInput>, userId: string) {
     const product = await prisma.product.findUnique({
       where: { id },
     });
@@ -85,16 +98,29 @@ export class ProductService {
       throw new Error('Produto (modelo) não encontrado');
     }
 
-    return prisma.product.update({
-      where: { id },
-      data,
-      include: {
-        category: true,
-      },
+    return prisma.$transaction(async (tx) => {
+      const updatedProduct = await tx.product.update({
+        where: { id },
+        data,
+        include: {
+          category: true,
+        },
+      });
+
+      await tx.productHistory.create({
+        data: {
+          productId: id,
+          itemName: `Produto: ${updatedProduct.name}`,
+          action: 'Editou',
+          userId,
+        }
+      });
+
+      return updatedProduct;
     });
   }
 
-  async delete(id: string) {
+  async delete(id: string, userId: string) {
     const product = await prisma.product.findUnique({
       where: { id },
       include: { _count: { select: { assets: true } } },
@@ -108,8 +134,19 @@ export class ProductService {
       throw new Error('Não é possível excluir um produto que possui ativos vinculados.');
     }
 
-    await prisma.product.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      await tx.productHistory.create({
+        data: {
+          productId: null,
+          itemName: `Produto: ${product.name}`,
+          action: 'Excluiu',
+          userId,
+        }
+      });
+
+      await tx.product.delete({
+        where: { id },
+      });
     });
   }
 }

@@ -32,6 +32,15 @@ export class AssetController {
     }
   }
 
+  async getCategoryStats(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const result = await this.assetService.getCategoryStats();
+      return reply.status(200).send(result);
+    } catch (error: any) {
+      return reply.status(500).send({ message: error.message });
+    }
+  }
+
   async getHistory(request: FastifyRequest, reply: FastifyReply) {
     const { id } = paramsSchema.parse(request.params);
 
@@ -106,9 +115,14 @@ export class AssetController {
 
   async delete(request: FastifyRequest, reply: FastifyReply) {
     const { id } = paramsSchema.parse(request.params);
+    const userId = request.user?.id;
+
+    if (!userId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
 
     try {
-      await this.assetService.delete(id);
+      await this.assetService.delete(id, userId);
       return reply.status(204).send();
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });

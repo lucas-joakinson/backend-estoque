@@ -13,6 +13,10 @@ export async function assetRoutes(app: FastifyInstance) {
     assetController.getStats(request, reply)
   );
 
+  app.get('/stats/categories', { preHandler: [auth] }, (request, reply) => 
+    assetController.getCategoryStats(request, reply)
+  );
+
   app.get('/:id/history', { preHandler: [auth] }, (request, reply) => 
     assetController.getHistory(request, reply)
   );

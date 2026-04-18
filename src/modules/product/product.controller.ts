@@ -20,10 +20,13 @@ export class ProductController {
   }
 
   async create(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ message: 'Não autenticado' });
+
     const data = createProductSchema.parse(request.body);
 
     try {
-      const product = await this.productService.create(data);
+      const product = await this.productService.create(data, userId);
       return reply.status(201).send(product);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });
@@ -31,11 +34,14 @@ export class ProductController {
   }
 
   async update(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ message: 'Não autenticado' });
+
     const { id } = paramsSchema.parse(request.params);
     const data = updateProductSchema.parse(request.body);
 
     try {
-      const product = await this.productService.update(id, data);
+      const product = await this.productService.update(id, data, userId);
       return reply.status(200).send(product);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });
@@ -43,10 +49,13 @@ export class ProductController {
   }
 
   async delete(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ message: 'Não autenticado' });
+
     const { id } = paramsSchema.parse(request.params);
 
     try {
-      await this.productService.delete(id);
+      await this.productService.delete(id, userId);
       return reply.status(204).send();
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });

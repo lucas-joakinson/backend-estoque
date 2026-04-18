@@ -8,7 +8,7 @@ export const categorySchema = z.object({
 export type CategoryInput = z.infer<typeof categorySchema>;
 
 export class CategoryService {
-  async create(data: CategoryInput) {
+  async create(data: CategoryInput, userId: string) {
     const categoryExists = await prisma.category.findUnique({
       where: { name: data.name },
     });
@@ -17,7 +17,20 @@ export class CategoryService {
       throw new Error('Categoria já existe');
     }
 
-    return prisma.category.create({ data });
+    return prisma.$transaction(async (tx) => {
+      const category = await tx.category.create({ data });
+
+      await tx.categoryHistory.create({
+        data: {
+          categoryId: category.id,
+          itemName: `Categoria: ${category.name}`,
+          action: 'Criou',
+          userId,
+        }
+      });
+
+      return category;
+    });
   }
 
   async findAll() {
@@ -32,7 +45,7 @@ export class CategoryService {
     return category;
   }
 
-  async update(id: string, data: CategoryInput) {
+  async update(id: string, data: CategoryInput, userId: string) {
     const category = await this.findById(id);
     
     const categoryWithName = await prisma.category.findFirst({
@@ -46,14 +59,27 @@ export class CategoryService {
       throw new Error('Já existe outra categoria com este nome');
     }
 
-    return prisma.category.update({
-      where: { id },
-      data,
+    return prisma.$transaction(async (tx) => {
+      const updatedCategory = await tx.category.update({
+        where: { id },
+        data,
+      });
+
+      await tx.categoryHistory.create({
+        data: {
+          categoryId: id,
+          itemName: `Categoria: ${updatedCategory.name}`,
+          action: 'Editou',
+          userId,
+        }
+      });
+
+      return updatedCategory;
     });
   }
 
-  async delete(id: string) {
-    await this.findById(id);
+  async delete(id: string, userId: string) {
+    const category = await this.findById(id);
 
     const hasProducts = await prisma.product.findFirst({
       where: { categoryId: id },
@@ -63,6 +89,17 @@ export class CategoryService {
       throw new Error('Não é possível excluir uma categoria que possui produtos');
     }
 
-    return prisma.category.delete({ where: { id } });
+    return prisma.$transaction(async (tx) => {
+      await tx.categoryHistory.create({
+        data: {
+          categoryId: null,
+          itemName: `Categoria: ${category.name}`,
+          action: 'Excluiu',
+          userId,
+        }
+      });
+
+      return tx.category.delete({ where: { id } });
+    });
   }
 }

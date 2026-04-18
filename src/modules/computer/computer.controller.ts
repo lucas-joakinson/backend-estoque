@@ -123,9 +123,12 @@ export class ComputerController {
   }
 
   async delete(request: FastifyRequest, reply: FastifyReply) {
+    const userId = request.user?.id;
+    if (!userId) return reply.status(401).send({ message: 'Não autenticado' });
+
     try {
       const { id } = paramsSchema.parse(request.params);
-      await this.computerService.delete(id);
+      await this.computerService.delete(id, userId);
       return reply.status(204).send();
     } catch (error: any) {
       if (error instanceof z.ZodError) {

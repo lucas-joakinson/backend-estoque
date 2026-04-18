@@ -80,7 +80,7 @@ export class UserService {
     };
   }
 
-  async create(data: CreateUserInput) {
+  async create(data: CreateUserInput, userId: string) {
     const userExists = await prisma.user.findUnique({
       where: { matricula: data.matricula },
     });
@@ -99,25 +99,36 @@ export class UserService {
 
     const hashedPassword = await bcrypt.hash(data.password, 10);
 
-    const user = await prisma.user.create({
-      data: {
-        matricula: data.matricula,
-        name: data.name,
-        password: hashedPassword,
-        roleId: role.id,
-      },
-      include: {
-        role: true,
-      }
-    });
+    return prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: {
+          matricula: data.matricula,
+          name: data.name,
+          password: hashedPassword,
+          roleId: role.id,
+        },
+        include: {
+          role: true,
+        }
+      });
 
-    return {
-      id: user.id,
-      matricula: user.matricula,
-      name: user.name,
-      role: user.role.name,
-      createdAt: user.createdAt,
-    };
+      await tx.userHistory.create({
+        data: {
+          targetUserId: user.id,
+          itemName: `Usuário: ${user.name} (${user.matricula})`,
+          action: 'Criou',
+          userId,
+        }
+      });
+
+      return {
+        id: user.id,
+        matricula: user.matricula,
+        name: user.name,
+        role: user.role.name,
+        createdAt: user.createdAt,
+      };
+    });
   }
 
   async update(id: string, data: UpdateUserInput, loggedUserId: string) {
@@ -155,23 +166,34 @@ export class UserService {
       updateData.roleId = newRole.id;
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: updateData,
-      include: {
-        role: true,
-      },
-    });
+    return prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id },
+        data: updateData,
+        include: {
+          role: true,
+        },
+      });
 
-    return {
-      id: updatedUser.id,
-      matricula: updatedUser.matricula,
-      name: updatedUser.name,
-      role: updatedUser.role.name,
-      avatarUrl: updatedUser.avatarUrl,
-      createdAt: updatedUser.createdAt,
-      updatedAt: updatedUser.updatedAt,
-    };
+      await tx.userHistory.create({
+        data: {
+          targetUserId: id,
+          itemName: `Usuário: ${updatedUser.name} (${updatedUser.matricula})`,
+          action: 'Editou',
+          userId: loggedUserId,
+        }
+      });
+
+      return {
+        id: updatedUser.id,
+        matricula: updatedUser.matricula,
+        name: updatedUser.name,
+        role: updatedUser.role.name,
+        avatarUrl: updatedUser.avatarUrl,
+        createdAt: updatedUser.createdAt,
+        updatedAt: updatedUser.updatedAt,
+      };
+    });
   }
 
   async getProfile(userId: string) {
@@ -268,7 +290,7 @@ export class UserService {
     });
   }
 
-  async delete(id: string) {
+  async delete(id: string, loggedUserId: string) {
     const user = await prisma.user.findUnique({
       where: { id },
     });
@@ -281,8 +303,19 @@ export class UserService {
       throw new Error('Não é possível excluir o usuário administrador mestre.');
     }
 
-    await prisma.user.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      await tx.userHistory.create({
+        data: {
+          targetUserId: null,
+          itemName: `Usuário: ${user.name} (${user.matricula})`,
+          action: 'Excluiu',
+          userId: loggedUserId,
+        }
+      });
+
+      await tx.user.delete({
+        where: { id },
+      });
     });
   }
 }
