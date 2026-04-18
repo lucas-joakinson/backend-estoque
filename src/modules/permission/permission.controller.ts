@@ -52,4 +52,14 @@ export class PermissionController {
       return reply.status(400).send({ message: error.message });
     }
   }
+
+  async deleteRole(request: FastifyRequest, reply: FastifyReply) {
+    try {
+      const { role } = paramsSchema.parse(request.params);
+      await this.permissionService.deleteRole(role);
+      return reply.status(204).send();
+    } catch (error: any) {
+      return reply.status(400).send({ message: error.message });
+    }
+  }
 }

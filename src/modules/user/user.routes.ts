@@ -1,11 +1,11 @@
 import { FastifyInstance } from 'fastify';
 import { UserController } from './user.controller';
-import { auth, isAdmin } from '../../shared/middleware/auth.middleware';
+import { auth, hasPermission } from '../../shared/middleware/auth.middleware';
 
 export async function userRoutes(app: FastifyInstance) {
   const userController = new UserController();
 
-  app.post('/', { preHandler: [auth, isAdmin] }, (request, reply) => 
+  app.post('/', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
     userController.create(request, reply)
   );
 
@@ -25,15 +25,15 @@ export async function userRoutes(app: FastifyInstance) {
     userController.uploadAvatar(request, reply)
   );
 
-  app.get('/', { preHandler: [auth, isAdmin] }, (request, reply) => 
+  app.get('/', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
     userController.listAll(request, reply)
   );
 
-  app.patch('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
+  app.patch('/:id', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
     userController.update(request, reply)
   );
 
-  app.delete('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
+  app.delete('/:id', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
     userController.delete(request, reply)
   );
 }

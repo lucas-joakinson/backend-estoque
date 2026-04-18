@@ -19,6 +19,8 @@ export const headsetQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(1000).default(10),
   search: z.string().optional(),
   status: z.string().optional(),
+  sortBy: z.enum(['matricula', 'lacre', 'marca', 'numeroSerie', 'status', 'createdAt', 'updatedAt']).default('createdAt'),
+  order: z.enum(['asc', 'desc']).default('desc'),
 });
 
 export type HeadsetInput = z.infer<typeof headsetSchema>;
@@ -27,7 +29,7 @@ export type HeadsetQueryInput = z.infer<typeof headsetQuerySchema>;
 
 export class HeadsetService {
   async findAll(query: HeadsetQueryInput) {
-    const { page, limit, search, status } = query;
+    const { page, limit, search, status, sortBy, order } = query;
     const skip = (page - 1) * limit;
 
     const where: any = {};
@@ -50,7 +52,7 @@ export class HeadsetService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { [sortBy]: order },
       }),
       prisma.headset.count({ where }),
     ]);

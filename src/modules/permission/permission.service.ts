@@ -8,6 +8,11 @@ export const updatePermissionsSchema = z.object({
   canManageAssets: z.boolean().optional(),
   canDeleteItems: z.boolean().optional(),
   canViewReports: z.boolean().optional(),
+  canManageComputers: z.boolean().optional(),
+  canDeleteComputers: z.boolean().optional(),
+  canManageHeadsets: z.boolean().optional(),
+  canDeleteHeadsets: z.boolean().optional(),
+  canExportData: z.boolean().optional(),
 });
 
 export const createRoleSchema = z.object({
@@ -23,6 +28,9 @@ export class PermissionService {
     return prisma.role.findMany({
       include: {
         permissions: true,
+        _count: {
+          select: { users: true }
+        }
       },
       orderBy: {
         name: 'asc',
@@ -80,12 +88,46 @@ export class PermissionService {
             canManageAssets: data.permissions?.canManageAssets ?? false,
             canDeleteItems: data.permissions?.canDeleteItems ?? false,
             canViewReports: data.permissions?.canViewReports ?? false,
+            canManageComputers: data.permissions?.canManageComputers ?? false,
+            canDeleteComputers: data.permissions?.canDeleteComputers ?? false,
+            canManageHeadsets: data.permissions?.canManageHeadsets ?? false,
+            canDeleteHeadsets: data.permissions?.canDeleteHeadsets ?? false,
+            canExportData: data.permissions?.canExportData ?? false,
           }
         }
       },
       include: {
         permissions: true,
       }
+    });
+  }
+
+  async deleteRole(roleName: string) {
+    const name = roleName.toUpperCase();
+    
+    if (name === 'ADMIN') {
+      throw new Error('O cargo ADMIN não pode ser excluído');
+    }
+
+    const role = await prisma.role.findUnique({
+      where: { name },
+      include: {
+        _count: {
+          select: { users: true }
+        }
+      }
+    });
+
+    if (!role) {
+      throw new Error('Cargo não encontrado');
+    }
+
+    if (role._count.users > 0) {
+      throw new Error('Não é possível excluir um cargo que possui usuários vinculados');
+    }
+
+    return prisma.role.delete({
+      where: { id: role.id }
     });
   }
 }

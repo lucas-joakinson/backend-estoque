@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { AssetController } from './asset.controller';
-import { auth, isAdmin } from '../../shared/middleware/auth.middleware';
+import { auth, hasPermission } from '../../shared/middleware/auth.middleware';
 
 export async function assetRoutes(app: FastifyInstance) {
   const assetController = new AssetController();
@@ -25,23 +25,23 @@ export async function assetRoutes(app: FastifyInstance) {
     assetController.getByPatrimonio(request, reply)
   );
 
-  app.post('/bulk', { preHandler: [auth] }, (request, reply) => 
+  app.post('/bulk', { preHandler: [auth, hasPermission('canManageAssets')] }, (request, reply) => 
     assetController.createBulk(request, reply)
   );
 
-  app.post('/', { preHandler: [auth] }, (request, reply) => 
+  app.post('/', { preHandler: [auth, hasPermission('canManageAssets')] }, (request, reply) => 
     assetController.create(request, reply)
   );
 
-  app.patch('/:id', { preHandler: [auth] }, (request, reply) => 
+  app.patch('/:id', { preHandler: [auth, hasPermission('canManageAssets')] }, (request, reply) => 
     assetController.update(request, reply)
   );
 
-  app.patch('/bulk', { preHandler: [auth] }, (request, reply) => 
+  app.patch('/bulk', { preHandler: [auth, hasPermission('canManageAssets')] }, (request, reply) => 
     assetController.updateBulk(request, reply)
   );
 
-  app.delete('/:id', { preHandler: [auth, isAdmin] }, (request, reply) => 
+  app.delete('/:id', { preHandler: [auth, hasPermission('canDeleteItems')] }, (request, reply) => 
     assetController.delete(request, reply)
   );
 }

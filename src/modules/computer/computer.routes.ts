@@ -1,6 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { ComputerController } from './computer.controller';
-import { auth } from '../../shared/middleware/auth.middleware';
+import { auth, hasPermission } from '../../shared/middleware/auth.middleware';
 
 export async function computerRoutes(app: FastifyInstance) {
   const computerController = new ComputerController();
@@ -21,23 +21,23 @@ export async function computerRoutes(app: FastifyInstance) {
     computerController.getHistory(request, reply)
   );
 
-  app.post('/bulk', { preHandler: [auth] }, (request, reply) => 
+  app.post('/bulk', { preHandler: [auth, hasPermission('canManageComputers')] }, (request, reply) => 
     computerController.createBulk(request, reply)
   );
 
-  app.post('/', { preHandler: [auth] }, (request, reply) => 
+  app.post('/', { preHandler: [auth, hasPermission('canManageComputers')] }, (request, reply) => 
     computerController.create(request, reply)
   );
 
-  app.put('/:id', { preHandler: [auth] }, (request, reply) => 
+  app.put('/:id', { preHandler: [auth, hasPermission('canManageComputers')] }, (request, reply) => 
     computerController.update(request, reply)
   );
 
-  app.patch('/bulk', { preHandler: [auth] }, (request, reply) => 
+  app.patch('/bulk', { preHandler: [auth, hasPermission('canManageComputers')] }, (request, reply) => 
     computerController.updateBulk(request, reply)
   );
 
-  app.delete('/:id', { preHandler: [auth] }, (request, reply) => 
+  app.delete('/:id', { preHandler: [auth, hasPermission('canDeleteComputers')] }, (request, reply) => 
     computerController.delete(request, reply)
   );
 }

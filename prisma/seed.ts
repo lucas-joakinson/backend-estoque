@@ -31,6 +31,11 @@ async function main() {
           canManageAssets: true,
           canDeleteItems: true,
           canViewReports: true,
+          canManageComputers: true,
+          canDeleteComputers: true,
+          canManageHeadsets: true,
+          canDeleteHeadsets: true,
+          canExportData: true,
         }
       }
     }
@@ -47,6 +52,11 @@ async function main() {
           canManageAssets: true,
           canDeleteItems: false,
           canViewReports: false,
+          canManageComputers: true,
+          canDeleteComputers: false,
+          canManageHeadsets: true,
+          canDeleteHeadsets: false,
+          canExportData: false,
         }
       }
     }
@@ -63,6 +73,11 @@ async function main() {
           canManageAssets: true,
           canDeleteItems: true,
           canViewReports: true,
+          canManageComputers: true,
+          canDeleteComputers: true,
+          canManageHeadsets: true,
+          canDeleteHeadsets: true,
+          canExportData: true,
         }
       }
     }
