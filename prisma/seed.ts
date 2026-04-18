@@ -14,10 +14,20 @@ async function main() {
   await prisma.headsetHistory.deleteMany();
   await prisma.computerHistory.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.notificationSettings.deleteMany();
   await prisma.rolePermission.deleteMany();
   await prisma.role.deleteMany();
   await prisma.headset.deleteMany();
   await prisma.computador.deleteMany();
+
+  // 1.5. Criar Configurações de Notificação
+  await prisma.notificationSettings.create({
+    data: {
+      id: "global",
+      min_headsets_disponiveis: 5,
+      max_headsets_defeito: 10
+    }
+  });
 
   // 2. Criar Cargos e Permissões
   const adminRole = await prisma.role.create({
@@ -36,6 +46,7 @@ async function main() {
           canManageHeadsets: true,
           canDeleteHeadsets: true,
           canExportData: true,
+          canManageNotifications: true,
         }
       }
     }
@@ -57,6 +68,7 @@ async function main() {
           canManageHeadsets: true,
           canDeleteHeadsets: false,
           canExportData: false,
+          canManageNotifications: false,
         }
       }
     }
@@ -78,6 +90,7 @@ async function main() {
           canManageHeadsets: true,
           canDeleteHeadsets: true,
           canExportData: true,
+          canManageNotifications: true,
         }
       }
     }

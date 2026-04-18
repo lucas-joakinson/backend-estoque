@@ -32,7 +32,15 @@ model RolePermission {
   canManageHeadsets  Boolean  @default(false)
   canDeleteHeadsets  Boolean  @default(false)
   canExportData      Boolean  @default(false)
+  canManageNotifications Boolean @default(false)
   updatedAt          DateTime @default(now()) @updatedAt
+}
+
+model NotificationSettings {
+  id                       String   @id @default("global")
+  min_headsets_disponiveis  Int      @default(10)
+  max_headsets_defeito      Int      @default(5)
+  updatedAt                DateTime @default(now()) @updatedAt
 }
 
 model User {
@@ -41,6 +49,7 @@ model User {
   name             String
   password         String
   avatarUrl        String?
+  lastActivityClear DateTime?
   roleId           String
   role             Role             @relation(fields: [roleId], references: [id])
   createdAt        DateTime         @default(now())

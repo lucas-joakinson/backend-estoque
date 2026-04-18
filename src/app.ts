@@ -13,6 +13,7 @@ import { userRoutes } from './modules/user/user.routes';
 import { permissionRoutes } from './modules/permission/permission.routes';
 import { headsetRoutes } from './modules/headset/headset.routes';
 import { computerRoutes } from './modules/computer/computer.routes';
+import { notificationRoutes } from './modules/notification/notification.routes';
 import { ZodError } from 'zod';
 
 export const app = fastify();
@@ -36,12 +37,10 @@ app.register(staticPlugin, {
   prefix: '/uploads/',
 });
 
-// Rota de Status / Health Check
 app.get('/', async () => {
   return { status: 'Backend Gerenciador de Ativos Online 🚀' };
 });
 
-// Registro de Rotas
 app.register(authRoutes, { prefix: '/auth' });
 app.register(userRoutes, { prefix: '/users' });
 app.register(permissionRoutes, { prefix: '/permissions' });
@@ -50,8 +49,8 @@ app.register(computerRoutes, { prefix: '/computadores' });
 app.register(productRoutes, { prefix: '/products' });
 app.register(categoryRoutes, { prefix: '/categories' });
 app.register(assetRoutes, { prefix: '/assets' });
+app.register(notificationRoutes, { prefix: '/notifications' });
 
-// Handler de Erros Global
 app.setErrorHandler((error, _, reply) => {
   if (error instanceof ZodError) {
     return reply.status(400).send({
