@@ -232,7 +232,7 @@ export class AssetService {
     }
   }
 
-  async getCategoryStats() {
+  async getCategoriesStats() {
     try {
       const categoriesWithCounts = await prisma.category.findMany({
         select: {

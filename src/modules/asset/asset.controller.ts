@@ -32,9 +32,9 @@ export class AssetController {
     }
   }
 
-  async getCategoryStats(request: FastifyRequest, reply: FastifyReply) {
+  async getCategoriesStats(request: FastifyRequest, reply: FastifyReply) {
     try {
-      const result = await this.assetService.getCategoryStats();
+      const result = await this.assetService.getCategoriesStats();
       return reply.status(200).send(result);
     } catch (error: any) {
       return reply.status(500).send({ message: error.message });

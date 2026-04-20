@@ -14,7 +14,7 @@ export async function assetRoutes(app: FastifyInstance) {
   );
 
   app.get('/stats/categories', { preHandler: [auth] }, (request, reply) => 
-    assetController.getCategoryStats(request, reply)
+    assetController.getCategoriesStats(request, reply)
   );
 
   app.get('/:id/history', { preHandler: [auth] }, (request, reply) => 
