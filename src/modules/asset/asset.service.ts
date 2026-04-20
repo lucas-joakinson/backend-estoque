@@ -200,53 +200,66 @@ export class AssetService {
   }
 
   async getStats() {
-    const stats = await prisma.asset.groupBy({
-      by: ['status'],
-      _count: {
-        _all: true,
-      },
-    });
+    try {
+      const stats = await prisma.asset.groupBy({
+        by: ['status'],
+        _count: {
+          _all: true,
+        },
+      });
 
-    const formattedStats = stats.reduce((acc, curr) => {
-      acc[curr.status] = curr._count._all;
-      return acc;
-    }, {} as Record<string, number>);
+      const formattedStats = stats.reduce((acc, curr) => {
+        acc[curr.status] = curr._count._all;
+        return acc;
+      }, {} as Record<string, number>);
 
-    // Garante que todos os status apareçam, mesmo que com 0
-    const allStatuses = Object.values(AssetStatus);
-    allStatuses.forEach(status => {
-      if (!formattedStats[status]) {
-        formattedStats[status] = 0;
-      }
-    });
+      // Garante que todos os status apareçam, mesmo que com 0
+      const allStatuses = Object.values(AssetStatus);
+      allStatuses.forEach(status => {
+        if (!formattedStats[status]) {
+          formattedStats[status] = 0;
+        }
+      });
 
-    return formattedStats;
+      return formattedStats;
+    } catch (error) {
+      const allStatuses = Object.values(AssetStatus);
+      const emptyStats: Record<string, number> = {};
+      allStatuses.forEach(status => {
+        emptyStats[status] = 0;
+      });
+      return emptyStats;
+    }
   }
 
   async getCategoryStats() {
-    const categoriesWithCounts = await prisma.category.findMany({
-      select: {
-        name: true,
-        products: {
-          select: {
-            _count: {
-              select: { assets: true }
+    try {
+      const categoriesWithCounts = await prisma.category.findMany({
+        select: {
+          name: true,
+          products: {
+            select: {
+              _count: {
+                select: { assets: true }
+              }
             }
           }
         }
-      }
-    });
+      }).catch(() => []);
 
-    const stats = categoriesWithCounts
-      .map(category => {
-        const count = category.products.reduce((acc, product) => acc + product._count.assets, 0);
-        return { name: category.name, count };
-      })
-      .filter(stat => stat.count > 0)
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 15);
+      const stats = categoriesWithCounts
+        .map(category => {
+          const count = category.products.reduce((acc, product) => acc + product._count.assets, 0);
+          return { name: category.name, count };
+        })
+        .filter(stat => stat.count > 0)
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 15);
 
-    return stats;
+      return stats;
+    } catch (error) {
+      return [];
+    }
   }
 
   async getAssetHistory(assetId: string) {
