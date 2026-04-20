@@ -12,10 +12,16 @@ export class AuthController {
   }
 
   async register(request: FastifyRequest, reply: FastifyReply) {
+    const loggedUserId = request.user?.id;
+
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
     const data = createUserSchema.parse(request.body);
 
     try {
-      const user = await this.userService.create(data);
+      const user = await this.userService.create(data, loggedUserId);
       return reply.status(201).send(user);
     } catch (error: any) {
       return reply.status(400).send({ message: error.message });

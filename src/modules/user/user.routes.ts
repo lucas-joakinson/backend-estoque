@@ -29,6 +29,10 @@ export async function userRoutes(app: FastifyInstance) {
     userController.listAll(request, reply)
   );
 
+  app.patch('/bulk-roles', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
+    userController.bulkUpdateRoles(request, reply)
+  );
+
   app.patch('/:id', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
     userController.update(request, reply)
   );

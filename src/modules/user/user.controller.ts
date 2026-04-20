@@ -1,5 +1,5 @@
 import { FastifyReply, FastifyRequest } from 'fastify';
-import { UserService, createUserSchema, userQuerySchema, updateUserSchema, changePasswordSchema, updateProfileSchema } from './user.service';
+import { UserService, createUserSchema, userQuerySchema, updateUserSchema, changePasswordSchema, updateProfileSchema, bulkUpdateRolesSchema } from './user.service';
 import { z } from 'zod';
 import path from 'path';
 import fs from 'fs';
@@ -131,6 +131,28 @@ export class UserController {
       const user = await this.userService.update(id, data, loggedUserId);
       return reply.status(200).send(user);
     } catch (error: any) {
+      return reply.status(400).send({ message: error.message });
+    }
+  }
+
+  async bulkUpdateRoles(request: FastifyRequest, reply: FastifyReply) {
+    const loggedUserId = request.user?.id;
+
+    if (!loggedUserId) {
+      return reply.status(401).send({ message: 'Usuário não autenticado' });
+    }
+
+    try {
+      const data = bulkUpdateRolesSchema.parse(request.body);
+      const updatedUsers = await this.userService.bulkUpdateRoles(data, loggedUserId);
+      return reply.status(200).send(updatedUsers);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({ 
+          message: 'Erro de validação', 
+          errors: error.errors.map(err => ({ field: err.path[0], message: err.message })) 
+        });
+      }
       return reply.status(400).send({ message: error.message });
     }
   }

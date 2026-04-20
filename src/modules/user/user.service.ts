@@ -30,10 +30,16 @@ export const changePasswordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+export const bulkUpdateRolesSchema = z.object({
+  userIds: z.array(z.string().uuid('ID de usuário inválido')).min(1, 'Selecione pelo menos um usuário'),
+  role: z.string().min(1, 'Cargo é obrigatório'),
+});
+
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+export type BulkUpdateRolesInput = z.infer<typeof bulkUpdateRolesSchema>;
 
 export const userQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -193,6 +199,68 @@ export class UserService {
         createdAt: updatedUser.createdAt,
         updatedAt: updatedUser.updatedAt,
       };
+    });
+  }
+
+  async bulkUpdateRoles(data: BulkUpdateRolesInput, loggedUserId: string) {
+    const { userIds, role: roleName } = data;
+
+    const newRole = await prisma.role.findUnique({
+      where: { name: roleName.toUpperCase() },
+    });
+
+    if (!newRole) {
+      throw new Error('Cargo especificado não existe');
+    }
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      include: { role: true },
+    });
+
+    if (users.length === 0) {
+      throw new Error('Nenhum usuário encontrado para atualizar');
+    }
+
+    const usersToUpdate = users.filter(user => {
+      // Proteções básicas
+      if (user.matricula === 'admin' && newRole.name !== 'ADMIN') return false;
+      if (user.id === loggedUserId) return false;
+      return true;
+    });
+
+    if (usersToUpdate.length === 0) {
+      throw new Error('Não foi possível atualizar nenhum dos usuários selecionados (proteção de administrador ou auto-alteração)');
+    }
+
+    return prisma.$transaction(async (tx) => {
+      const updatedUsers = [];
+
+      for (const user of usersToUpdate) {
+        const updated = await tx.user.update({
+          where: { id: user.id },
+          data: { roleId: newRole.id },
+          include: { role: true },
+        });
+
+        await tx.userHistory.create({
+          data: {
+            targetUserId: user.id,
+            itemName: `Usuário: ${updated.name} (${updated.matricula})`,
+            action: `Alterou cargo de ${user.role.name} para ${newRole.name}`,
+            userId: loggedUserId,
+          }
+        });
+
+        updatedUsers.push({
+          id: updated.id,
+          matricula: updated.matricula,
+          name: updated.name,
+          role: updated.role.name,
+        });
+      }
+
+      return updatedUsers;
     });
   }
 
