@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Headset" ALTER COLUMN "status" SET DEFAULT 'DISPONIVEL';
