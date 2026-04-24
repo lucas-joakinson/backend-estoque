@@ -5,27 +5,27 @@ import { auth, hasPermission } from '../../shared/middleware/auth.middleware';
 export async function assetRoutes(app: FastifyInstance) {
   const assetController = new AssetController();
 
-  app.get('/', { preHandler: [auth] }, (request, reply) => 
+  app.get('/', { preHandler: [auth, hasPermission(['canViewAssets', 'canManageAssets'])] }, (request, reply) => 
     assetController.listAll(request, reply)
   );
 
-  app.get('/stats', { preHandler: [auth] }, (request, reply) => 
+  app.get('/stats', { preHandler: [auth, hasPermission(['canViewAssets', 'canManageAssets'])] }, (request, reply) => 
     assetController.getStats(request, reply)
   );
 
-  app.get('/stats/categories', { preHandler: [auth] }, (request, reply) => 
+  app.get('/stats/categories', { preHandler: [auth, hasPermission(['canViewAssets', 'canManageAssets'])] }, (request, reply) => 
     assetController.getCategoriesStats(request, reply)
   );
 
-  app.get('/:id/history', { preHandler: [auth] }, (request, reply) => 
+  app.get('/:id/history', { preHandler: [auth, hasPermission(['canViewAssets', 'canManageAssets'])] }, (request, reply) => 
     assetController.getHistory(request, reply)
   );
 
-  app.get('/history/:id', { preHandler: [auth] }, (request, reply) => 
+  app.get('/history/:id', { preHandler: [auth, hasPermission(['canViewAssets', 'canManageAssets'])] }, (request, reply) => 
     assetController.getHistory(request, reply)
   );
 
-  app.get('/:patrimonio', { preHandler: [auth] }, (request, reply) => 
+  app.get('/:patrimonio', { preHandler: [auth, hasPermission(['canViewAssets', 'canManageAssets'])] }, (request, reply) => 
     assetController.getByPatrimonio(request, reply)
   );
 

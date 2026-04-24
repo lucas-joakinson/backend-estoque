@@ -5,11 +5,11 @@ import { auth, hasPermission } from '../../shared/middleware/auth.middleware';
 export async function permissionRoutes(app: FastifyInstance) {
   const permissionController = new PermissionController();
 
-  app.get('/', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
+  app.get('/', { preHandler: [auth, hasPermission('canViewPermissions')] }, (request, reply) => 
     permissionController.listAll(request, reply)
   );
 
-  app.get('/:role', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
+  app.get('/:role', { preHandler: [auth, hasPermission('canViewPermissions')] }, (request, reply) => 
     permissionController.getByRole(request, reply)
   );
 

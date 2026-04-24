@@ -33,7 +33,13 @@ model RolePermission {
   canDeleteHeadsets  Boolean  @default(false)
   canExportData      Boolean  @default(false)
   canManageNotifications Boolean @default(false)
-  updatedAt          DateTime @default(now()) @updatedAt
+  canViewUsers           Boolean @default(false)
+  canViewPermissions     Boolean @default(false)
+  canViewNotifications   Boolean @default(false)
+  canViewAssets          Boolean @default(false)
+  canViewHeadsets        Boolean @default(false)
+  canViewComputers       Boolean @default(false)
+  updatedAt              DateTime @default(now()) @updatedAt
 }
 
 model NotificationSettings {

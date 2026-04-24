@@ -13,6 +13,7 @@ async function main() {
   await prisma.category.deleteMany();
   await prisma.headsetHistory.deleteMany();
   await prisma.computerHistory.deleteMany();
+  await prisma.userHistory.deleteMany();
   await prisma.user.deleteMany();
   await prisma.notificationSettings.deleteMany();
   await prisma.rolePermission.deleteMany();
@@ -47,6 +48,12 @@ async function main() {
           canDeleteHeadsets: true,
           canExportData: true,
           canManageNotifications: true,
+          canViewUsers: true,
+          canViewPermissions: true,
+          canViewNotifications: true,
+          canViewAssets: true,
+          canViewHeadsets: true,
+          canViewComputers: true,
         }
       }
     }
@@ -69,6 +76,9 @@ async function main() {
           canDeleteHeadsets: false,
           canExportData: false,
           canManageNotifications: false,
+          canViewUsers: false,
+          canViewPermissions: false,
+          canViewNotifications: false,
         }
       }
     }
@@ -91,6 +101,40 @@ async function main() {
           canDeleteHeadsets: true,
           canExportData: true,
           canManageNotifications: true,
+          canViewUsers: true,
+          canViewPermissions: true,
+          canViewNotifications: true,
+          canViewAssets: true,
+          canViewHeadsets: true,
+          canViewComputers: true,
+        }
+      }
+    }
+  });
+
+  const testerRole = await prisma.role.create({
+    data: {
+      name: 'TESTER',
+      permissions: {
+        create: {
+          canManageUsers: false,
+          canManageProducts: false,
+          canManageCategories: false,
+          canManageAssets: false,
+          canDeleteItems: false,
+          canViewReports: true,
+          canManageComputers: false,
+          canDeleteComputers: false,
+          canManageHeadsets: false,
+          canDeleteHeadsets: false,
+          canExportData: false,
+          canManageNotifications: false,
+          canViewUsers: true,
+          canViewPermissions: true,
+          canViewNotifications: true,
+          canViewAssets: true,
+          canViewHeadsets: true,
+          canViewComputers: true,
         }
       }
     }
@@ -108,6 +152,7 @@ async function main() {
       { matricula: '100001', name: 'João Operador', password, roleId: operatorRole.id },
       { matricula: '100002', name: 'Maria Supervisora', password, roleId: supervisorRole.id },
       { matricula: '100003', name: 'Carlos Técnico', password, roleId: operatorRole.id },
+      { matricula: 'tester', name: 'Usuário Tester', password, roleId: testerRole.id },
     ]
   });
 

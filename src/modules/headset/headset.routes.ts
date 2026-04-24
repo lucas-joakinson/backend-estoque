@@ -5,19 +5,19 @@ import { auth, hasPermission } from '../../shared/middleware/auth.middleware';
 export async function headsetRoutes(app: FastifyInstance) {
   const headsetController = new HeadsetController();
 
-  app.get('/', { preHandler: [auth] }, (request, reply) => 
+  app.get('/', { preHandler: [auth, hasPermission(['canViewHeadsets', 'canManageHeadsets'])] }, (request, reply) => 
     headsetController.listAll(request, reply)
   );
 
-  app.get('/stats', { preHandler: [auth] }, (request, reply) => 
+  app.get('/stats', { preHandler: [auth, hasPermission(['canViewHeadsets', 'canManageHeadsets'])] }, (request, reply) => 
     headsetController.getStats(request, reply)
   );
 
-  app.get('/:id', { preHandler: [auth] }, (request, reply) => 
+  app.get('/:id', { preHandler: [auth, hasPermission(['canViewHeadsets', 'canManageHeadsets'])] }, (request, reply) => 
     headsetController.getById(request, reply)
   );
 
-  app.get('/:id/history', { preHandler: [auth] }, (request, reply) => 
+  app.get('/:id/history', { preHandler: [auth, hasPermission(['canViewHeadsets', 'canManageHeadsets'])] }, (request, reply) => 
     headsetController.getHistory(request, reply)
   );
 

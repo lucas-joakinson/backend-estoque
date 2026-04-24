@@ -13,6 +13,13 @@ export const updatePermissionsSchema = z.object({
   canManageHeadsets: z.boolean().optional(),
   canDeleteHeadsets: z.boolean().optional(),
   canExportData: z.boolean().optional(),
+  canManageNotifications: z.boolean().optional(),
+  canViewUsers: z.boolean().optional(),
+  canViewPermissions: z.boolean().optional(),
+  canViewNotifications: z.boolean().optional(),
+  canViewAssets: z.boolean().optional(),
+  canViewHeadsets: z.boolean().optional(),
+  canViewComputers: z.boolean().optional(),
 });
 
 export const createRoleSchema = z.object({
@@ -93,6 +100,13 @@ export class PermissionService {
             canManageHeadsets: data.permissions?.canManageHeadsets ?? false,
             canDeleteHeadsets: data.permissions?.canDeleteHeadsets ?? false,
             canExportData: data.permissions?.canExportData ?? false,
+            canManageNotifications: data.permissions?.canManageNotifications ?? false,
+            canViewUsers: data.permissions?.canViewUsers ?? false,
+            canViewPermissions: data.permissions?.canViewPermissions ?? false,
+            canViewNotifications: data.permissions?.canViewNotifications ?? false,
+            canViewAssets: data.permissions?.canViewAssets ?? false,
+            canViewHeadsets: data.permissions?.canViewHeadsets ?? false,
+            canViewComputers: data.permissions?.canViewComputers ?? false,
           }
         }
       },

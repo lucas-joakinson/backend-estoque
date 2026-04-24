@@ -24,13 +24,12 @@ export async function auth(request: FastifyRequest, reply: FastifyReply) {
   }
 }
 
-export function hasPermission(permissionName: string) {
+export function hasPermission(permissionName: string | string[]) {
   return async (request: FastifyRequest, reply: FastifyReply) => {
     if (!request.user) {
       return reply.status(401).send({ error: 'Não autenticado.' });
     }
 
-    // Se o cargo for explicitamente ADMIN, permite todas as ações por padrão (bypass de emergência)
     if (request.user.role === 'ADMIN') {
       return;
     }
@@ -52,7 +51,10 @@ export function hasPermission(permissionName: string) {
 
     const permissions = userWithPermissions.role.permissions as any;
     
-    if (!permissions[permissionName]) {
+    const permissionsToCheck = Array.isArray(permissionName) ? permissionName : [permissionName];
+    const hasAnyPermission = permissionsToCheck.some(perm => permissions[perm] === true);
+
+    if (!hasAnyPermission) {
       return reply.status(403).send({ error: 'Acesso negado. Você não tem permissão para esta ação.' });
     }
   };

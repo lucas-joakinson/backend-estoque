@@ -17,7 +17,7 @@ export async function notificationRoutes(app: FastifyInstance) {
     notificationController.clearActivities(request, reply)
   );
 
-  app.get('/settings', { preHandler: [auth, hasPermission('canManageNotifications')] }, (request, reply) => 
+  app.get('/settings', { preHandler: [auth, hasPermission('canViewNotifications')] }, (request, reply) => 
     notificationController.getSettings(request, reply)
   );
 

@@ -25,7 +25,7 @@ export async function userRoutes(app: FastifyInstance) {
     userController.uploadAvatar(request, reply)
   );
 
-  app.get('/', { preHandler: [auth, hasPermission('canManageUsers')] }, (request, reply) => 
+  app.get('/', { preHandler: [auth, hasPermission('canViewUsers')] }, (request, reply) => 
     userController.listAll(request, reply)
   );
 

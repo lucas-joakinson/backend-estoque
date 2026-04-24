@@ -5,19 +5,19 @@ import { auth, hasPermission } from '../../shared/middleware/auth.middleware';
 export async function computerRoutes(app: FastifyInstance) {
   const computerController = new ComputerController();
 
-  app.get('/', { preHandler: [auth] }, (request, reply) => 
+  app.get('/', { preHandler: [auth, hasPermission(['canViewComputers', 'canManageComputers'])] }, (request, reply) => 
     computerController.listAll(request, reply)
   );
 
-  app.get('/stats', { preHandler: [auth] }, (request, reply) => 
+  app.get('/stats', { preHandler: [auth, hasPermission(['canViewComputers', 'canManageComputers'])] }, (request, reply) => 
     computerController.getStats(request, reply)
   );
 
-  app.get('/:id', { preHandler: [auth] }, (request, reply) => 
+  app.get('/:id', { preHandler: [auth, hasPermission(['canViewComputers', 'canManageComputers'])] }, (request, reply) => 
     computerController.getById(request, reply)
   );
 
-  app.get('/:id/history', { preHandler: [auth] }, (request, reply) => 
+  app.get('/:id/history', { preHandler: [auth, hasPermission(['canViewComputers', 'canManageComputers'])] }, (request, reply) => 
     computerController.getHistory(request, reply)
   );
 
