@@ -300,10 +300,15 @@ export class UserService {
   async updateProfile(userId: string, data: UpdateProfileInput) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
+      include: { role: true },
     });
 
     if (!user) {
       throw new Error('Usuário não encontrado');
+    }
+
+    if (user.role.name === 'TESTER' && data.avatarUrl !== undefined) {
+      throw new Error('Usuários com cargo TESTER não podem alterar a foto de perfil');
     }
 
     const updateData: any = {};
