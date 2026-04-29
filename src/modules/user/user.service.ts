@@ -150,7 +150,13 @@ export class UserService {
     const updateData: any = {};
 
     if (data.name) updateData.name = data.name;
-    if (data.password) updateData.password = await bcrypt.hash(data.password, 10);
+    
+    if (data.password) {
+      if (id === loggedUserId && user.role.name === 'TESTER') {
+        throw new Error('Usuários com cargo TESTER não podem alterar a própria senha');
+      }
+      updateData.password = await bcrypt.hash(data.password, 10);
+    }
     
     if (data.role) {
       const newRole = await prisma.role.findUnique({
@@ -330,10 +336,15 @@ export class UserService {
   async changePassword(userId: string, data: ChangePasswordInput) {
     const user = await prisma.user.findUnique({
       where: { id: userId },
+      include: { role: true },
     });
 
     if (!user) {
       throw new Error('Usuário não encontrado');
+    }
+
+    if (user.role.name === 'TESTER') {
+      throw new Error('Usuários com cargo TESTER não podem alterar a própria senha');
     }
 
     const isPasswordValid = await bcrypt.compare(data.currentPassword, user.password);
